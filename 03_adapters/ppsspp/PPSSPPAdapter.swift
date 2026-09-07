@@ -27,7 +27,7 @@ public final class PPSSPPAdapter: NSObject, EmulatorModule {
         self.context = context
         let core = PPSSPPCore(dataRoot: context.dataRoot,
                               resourceRoot: context.resourceRoot,
-                              metalLayer: context.metalLayer,
+                              containerView: context.renderContainer,
                               jitAvailable: context.jitAvailable)
         core.delegate = self
         self.core = core

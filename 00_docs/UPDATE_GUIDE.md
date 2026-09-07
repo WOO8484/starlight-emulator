@@ -41,12 +41,22 @@ git -C 01_sources/ARMSX2 diff > ../../04_patches/armsx2/0001-<설명>.patch
 git -C 01_sources/ARMSX2 apply ../../04_patches/armsx2/0001-<설명>.patch
 ```
 
+## 현재 upstream 수정 현황 (지시문 4항 — 최소 유지)
+| 엔진 | 수정 | 파일 | 성격 |
+|---|---|---|---|
+| PPSSPP | 1 | `CMakeLists.txt` 끝 append | 정적 라이브러리 타깃 추가(코어 소스 무수정). `04_patches/ppsspp/append_static_lib.cmake` |
+| ARMSX2 | 1 | `pcsx2-sdl/Main.cpp` | `main`+렌더그룹 `#ifndef ARMSX2_EMBED` 가드(코어 무수정). `04_patches/armsx2/0001-embed-frontend.patch` |
+| MeloNX | 0 | — | 빌드 스크립트만 사용 |
+
+핵심 코어(PPSSPP `Core`, PCSX2 `pcsx2`/`common`, Ryujinx .NET)는 **무수정**. 위 2건은 빌드/링크
+경계에만 국한된 얕은 변경이므로 upstream 교체 시 재적용 부담이 작다.
+
 ## 1단계 모의 검증 (지시문 19항)
-최소 한 엔진(예: PPSSPP)에서 다음을 확인하고 결과를 PHASE1_RESULT 에 기록:
+최소 한 엔진(예: MeloNX — patch 0개)에서 다음을 확인하고 결과를 PHASE1_RESULT 에 기록:
 ```
-기존 upstream → Adapter 분리 확인 → upstream clean checkout/교체 → patch 재적용
+기존 upstream → Adapter 분리 확인 → upstream clean checkout/교체 → patch 재적용(있으면)
 → Adapter 재연결 → 빌드
 ```
-Adapter 가 upstream 내부에 깊게 침투했다면(= upstream 파일을 직접 광범위 수정) 구조를 단순화한다.
-현재 설계는 upstream 무수정(0 patch) 을 기본으로 하므로 이 모의 검증은 "patch 0개 → 교체 후 그대로 재빌드"
-가 성립하는지 확인하는 형태다.
+MeloNX 는 patch 0 이므로 "upstream 교체 → 빌드 스크립트 재실행"만으로 갱신 성립.
+PPSSPP/ARMSX2 는 위 얕은 patch 1건만 재적용하면 된다. Adapter 가 upstream 내부에 깊게 침투하지 않도록
+(우리 코드는 03_adapters 에만) 유지한다.

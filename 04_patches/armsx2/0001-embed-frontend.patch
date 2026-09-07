@@ -1,0 +1,96 @@
+Starlight: pcsx2-sdl/Main.cpp 임베드 패치 (ARMSX2 @ de57f431)
+
+목적:
+  - pcsx2-sdl 의 Host:: 구현을 재사용하되, (a) int main() 과
+    (b) 렌더 윈도우 그룹(GetTopLevelWindowInfo/AcquireRenderWindow/ReleaseRenderWindow/
+    BeginPresentFrame/RequestResizeHostDisplay/IsFullscreen/SetFullscreen)만
+    #ifndef ARMSX2_EMBED 로 제외한다.
+  - 원본은 VK_KHR_display(창 없음)로 렌더하지만 iOS 는 CAMetalLayer(MoltenVK)가 필요하므로
+    렌더 그룹은 03_adapters/armsx2/ARMSX2Host.mm 가 대체 제공한다.
+  - Main.cpp 를 -DARMSX2_EMBED 로 컴파일하면 main()·렌더그룹이 빠지고 나머지 Host:: 만 링크된다.
+
+적용:  git -C 01_sources/ARMSX2 apply 04_patches/armsx2/0001-embed-frontend.patch
+검증:  Windows 미검증(NOT_TESTED). 컨텍스트 불일치 시 Mac 에서 함수 경계에 동일 가드를 수동 삽입 후
+       `git diff > 0001-embed-frontend.patch` 로 재생성할 것.
+
+diff --git a/pcsx2-sdl/Main.cpp b/pcsx2-sdl/Main.cpp
+--- a/pcsx2-sdl/Main.cpp
++++ b/pcsx2-sdl/Main.cpp
+@@
++#ifndef ARMSX2_EMBED
+ std::optional<WindowInfo> Host::GetTopLevelWindowInfo()
+ {
+ 	return Pcsx2SDL::BuildWindowInfo();
+ }
++#endif // ARMSX2_EMBED
+
+ void Host::OnInputDeviceConnected(const std::string_view identifier, const std::string_view device_name)
+ {
+ 	INFO_LOG("Input device connected: {} ({})", identifier, device_name);
+ }
+@@
++#ifndef ARMSX2_EMBED
+ std::optional<WindowInfo> Host::AcquireRenderWindow(bool recreate_window)
+ {
+ 	return Pcsx2SDL::BuildWindowInfo();
+ }
+
+ void Host::ReleaseRenderWindow()
+ {
+ }
+
+ void Host::BeginPresentFrame()
+ {
+ }
+
+ void Host::RequestResizeHostDisplay(s32 width, s32 height)
+ {
+ 	// VK_KHR_display provides a fixed mode for the lifetime of the surface;
+ 	// resize requests from the core are advisory only.
+ }
++#endif // ARMSX2_EMBED
+
+ void Host::OnVMStarting()
+ {
+ }
+@@
++#ifndef ARMSX2_EMBED
+ bool Host::IsFullscreen()
+ {
+ 	return true;
+ }
+
+ void Host::SetFullscreen(bool enabled)
+ {
+ 	// No-op: VK_KHR_display is always fullscreen; there's no compositor to
+ 	// host a windowed mode.
+ }
++#endif // ARMSX2_EMBED
+
+ void Host::RequestExitApplication(bool allow_confirm)
+@@
+ 	ret->store(clean_shutdown ? EXIT_SUCCESS : EXIT_FAILURE);
+ }
+
++#ifndef ARMSX2_EMBED
+ int main(int argc, char* argv[])
+ {
+ 	// Short-circuit --help/--version before any heavyweight init so they
+ 	// work even on a system where the resources dir hasn't been laid down.
+@@
+ 	cpu_thread.join();
+
+ #if defined(WAYLAND_API)
+ 	// Tear down the Wayland fallback window, if one was created. Done after the
+ 	// CPU/GS threads are gone so nothing is still presenting to the surface.
+ 	if (s_wayland_window)
+ 	{
+ 		SDL_DestroyWindow(s_wayland_window);
+ 		s_wayland_window = nullptr;
+ 		SDL_QuitSubSystem(SDL_INIT_VIDEO);
+ 	}
+ #endif
+
+ 	return thread_ret.load();
+ }
++#endif // ARMSX2_EMBED

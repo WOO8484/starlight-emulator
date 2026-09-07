@@ -25,15 +25,17 @@ public final class HostViewModel: ObservableObject {
 
     private var manager: EmulatorManager!
     private var metalLayer: CAMetalLayer?
+    private var hostView: AnyObject?          // MetalLayerView (PPSSPP 자식VC 컨테이너)
     private var pendingLaunch: GameDescriptor?
 
     public init() {}
 
-    /// MetalHostView 가 레이어를 만들면 호출. 이 시점에 Manager 를 구성한다.
-    public func attachLayer(_ layer: CAMetalLayer) {
-        self.metalLayer = layer
+    /// MetalHostView 가 준비되면 호출. 이 시점에 Manager 를 구성한다.
+    public func attach(hostView view: MetalLayerView) {
+        self.hostView = view
+        self.metalLayer = view.metalLayer
         if manager == nil { setup() }
-        // 레이어 준비 전 눌린 실행 요청이 있으면 지금 처리.
+        // 준비 전 눌린 실행 요청이 있으면 지금 처리.
         if let g = pendingLaunch { pendingLaunch = nil; manager.launch(g) }
     }
 
@@ -62,6 +64,7 @@ public final class HostViewModel: ObservableObject {
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
         let resourceRoot = StarlightPaths.resourceRoot(for: system)
         return EmulatorContext(metalLayer: metalLayer ?? CAMetalLayer(),
+                               renderContainer: hostView,   // PPSSPP 자식VC 임베드용
                                dataRoot: dataRoot,
                                resourceRoot: resourceRoot,
                                sharedGameLibrary: sharedLibraryURL(),

@@ -7,14 +7,18 @@
 
 ## 요약 (지시문 21항 "환경상 실기기 테스트 불가")
 ```
-[PASS]       가능한 모든 소스 통합 (PPSSPP/ARMSX2 구조분석 + MeloNX 소스 확보)
+[PASS]       가능한 모든 소스 통합 (PPSSPP/ARMSX2 진입점·빌드타깃 확정 + MeloNX 소스 확보)
 [PASS]       Adapter 구현 (common + ppsspp + armsx2 + melonx)
 [PASS]       Host 연결 (EmulatorManager ↔ 최소 Host UI)
-[PASS]       빌드 설정 (XcodeGen project.yml, entitlements, bridging header, 빌드 스크립트)
+[PASS]       엔진 링크 준비 (빌드 타깃/심볼/헤더/의존성/entitlements/JIT 확정 — BUILD_NOTES §6)
+[PASS]       렌더 브리지 (PPSSPP 자식VC / ARMSX2 Host::AcquireRenderWindow / MeloNX set_native_window)
+[PASS]       Mac 빌드 스크립트 (build_ppsspp/armsx2/melonx/generate_host/build_all + project.yml 배선)
+[PASS]       충돌 사전 점검 (CONFLICT_ANALYSIS.md — 링크/SDL/FFmpeg/MoltenVK/JIT, 전부 NOT_TESTED)
 [PASS]       테스트 절차 (체크리스트 + XCUITest 자동화)
 [NOT_TESTED] 실기기 항목 (빌드/실행/렌더/오디오/입력/전환/IPA)
 ```
-→ **완전 완료 아님.** 다음 단계는 macOS+Xcode+iPhone 16 Pro Max 에서 엔진 링크(`*_LINKED`) 후 검증.
+→ **완전 완료 아님.** Windows 에서 준비 가능한 링크/빌드 작업은 종료. 남은 것은 Mac 에서
+   `bash 07_build/build_all_ios.sh` → 컴파일 오류 수정 → 실기기 테스트.
 
 ---
 
@@ -24,8 +28,9 @@
 - Launch: **NOT_TESTED**
 - Stop/Return: **NOT_TESTED**
 - Relaunch: **NOT_TESTED**
-- 원본 수정 파일 수: **0** (upstream 무수정; ViewControllerMetal.mm 컨텍스트는 통합 시 재사용)
-- 적용 patch: **없음** (04_patches/ppsspp 비어 있음)
+- 링크 준비: **PASS** (빌드타깃 PPSSPPCore, 심볼/헤더/프레임워크 확정 — BUILD_NOTES §6.1)
+- 원본 수정 파일 수: **1** (CMakeLists.txt 끝에 정적 라이브러리 타깃 append, 코어 소스 무수정)
+- 적용 patch: `04_patches/ppsspp/append_static_lib.cmake`
 
 ## ARMSX2
 - Adapter: **PASS** (구현 완료: ARMSX2Adapter.swift + ARMSX2Core.h/.mm, VMManager/CPU스레드 기반)
@@ -33,8 +38,10 @@
 - Launch: **NOT_TESTED** (PS2 BIOS 필요)
 - Stop/Return: **NOT_TESTED**
 - Relaunch: **NOT_TESTED**
-- 원본 수정 파일 수: **0** (Host:: 콜백은 pcsx2-sdl/Main.cpp 재사용 예정)
-- 적용 patch: **없음**
+- 링크 준비: **PASS** (빌드타깃 PCSX2+common, Host:: 48개 목록 확정, 렌더 브리지 구현 — BUILD_NOTES §6.2)
+- 원본 수정 파일 수: **1** (`pcsx2-sdl/Main.cpp` 의 main+렌더그룹 `#ifndef ARMSX2_EMBED` 가드; 코어 무수정)
+- 적용 patch: `04_patches/armsx2/0001-embed-frontend.patch`
+- 우리 구현 Host::: AcquireRenderWindow/ReleaseRenderWindow/BeginPresentFrame/GetTopLevelWindowInfo/IsFullscreen/SetFullscreen/RequestResizeHostDisplay (`ARMSX2Host.mm`)
 
 ## MeloNX
 - Adapter: **PASS** (구현 완료: MeloNXAdapter.swift + MeloNXCore.swift, SN_* C ABI/@_silgen_name 기반)
@@ -43,7 +50,8 @@
 - Launch: **NOT_TESTED** (prod.keys + firmware 필요)
 - Stop/Return: **NOT_TESTED**
 - Relaunch: **NOT_TESTED**
-- 원본 수정 파일 수: **0**
+- 링크 준비: **PASS** (NativeAOT dylib 빌드법 확정, C ABI 33심볼 목록, 의존 프레임워크 확정 — BUILD_NOTES §6.3)
+- 원본 수정 파일 수: **0** (빌드 스크립트만 사용)
 - 적용 patch: **없음**
 - 비고: 공식 upstream(git.ryujinx.app)은 이 환경에서 접근 불가 → 공개 GitHub 미러/포크 사용(BUILD_NOTES §3에 차이 기록).
 
@@ -65,17 +73,23 @@
 - Adapter/upstream 분리: **PASS** (03_adapters ↔ 01_sources ↔ 04_patches 분리, patch 0개)
 - upstream 교체 → 재빌드 모의: **NOT_TESTED** (빌드 불가 환경; 절차는 UPDATE_GUIDE 에 명시)
 
-## 남은 문제 / 다음 작업
-1. **엔진 정적 라이브러리/프레임워크 빌드**(Mac)
-   - PPSSPP: CMake iOS 툴체인으로 정적 라이브러리화
-   - ARMSX2: pcsx2 core + common 정적 라이브러리화, pcsx2-sdl Host:: 이식
-   - MeloNX: Ryujinx.Headless.SDL2 를 NativeAOT(ios-arm64)로 빌드 → C 심볼 라이브러리 + SDL2/FFmpeg xcframework
-   - 재현: `07_build/project.yml` 의 `*_LINKED` 활성 + dependencies/헤더경로 추가 → `xcodegen generate`
-2. **PPSSPP GraphicsContext 통합**: `StarlightPPSSPPCreateMetalContext()` 를 ios/ViewControllerMetal.mm 기반으로 구현
-3. **ARMSX2 렌더 윈도우**: `Host::AcquireRenderWindow` 가 공유 CAMetalLayer→WindowInfo 반환하도록 구현
-4. **MeloNX set_native_window 타이밍**: SN_main 시작 시점과 레이어 전달 순서 실기기 확인
-5. **복수 JIT 공존 검증**(BUILD_NOTES §5-1): ARMSX2+MeloNX recompiler 공존 — 최우선
-6. **SDL2/SDL3 심볼 충돌 확인**(BUILD_NOTES §5-2)
-7. **실기기 전 항목 검증** → 본 문서의 NOT_TESTED 를 실제 결과로 갱신
-   - 로그 위치: `08_logs/` (xcodegen.log, xcodebuild.log, 런타임 로그)
-   - 재현 방법: `06_tests/CORE_SWITCH_CHECKLIST.md`
+## 남은 문제 / 다음 작업 (Windows 준비 종료 → Mac 실행만 남음)
+
+**Windows 에서 완료된 링크 준비**(재분석 불필요):
+- 3엔진 빌드 타깃/심볼/헤더/의존성/entitlements/JIT 확정(BUILD_NOTES §6)
+- 렌더 브리지 구현(PPSSPP 자식VC / ARMSX2 Host 렌더그룹 / MeloNX set_native_window)
+- patch 확정(PPSSPP append cmake, ARMSX2 Main.cpp 가드), MeloNX 빌드 레시피 확정
+- 빌드 스크립트 5종 + project.yml 링크 배선, 충돌 목록/완화책(CONFLICT_ANALYSIS)
+
+**Mac 에서 해야 할 일(순서)**:
+1. `bash 07_build/build_all_ios.sh` — PPSSPP→ARMSX2→MeloNX 라이브러리 빌드 → 프로젝트 생성 → Host 빌드
+   - 전제: Xcode, CMake, .NET 8 SDK(+`dotnet workload install ios`)
+2. 컴파일/링크 오류 수정
+   - 예상 지점: 정적 심볼 중복(zlib/fmt/imgui/ffmpeg) → CONFLICT_ANALYSIS §1 완화(엔진 dylib 격리)
+   - SDL2/SDL3 공존, MoltenVK 단일화(§2,§3)
+   - project.yml 의 `[LINK ...]` 블록 주석 해제(prebuilt 경로와 매칭)
+3. iPhone 16 Pro Max 서명 + JIT 활성(AltStore/SideStore/JitStreamer/StikJIT 또는 TrollStore)
+4. 게임/BIOS/keys 배치(체크리스트 사전조건) → `06_tests/CORE_SWITCH_CHECKLIST.md` 실기기 검증
+5. 본 문서의 NOT_TESTED → 실제 결과로 갱신
+   - 로그 위치: `08_logs/`
+   - 최우선 검증: 복수 JIT 공존(CONFLICT_ANALYSIS §7), SDL2/SDL3(§2), Metal surface 전환(§5)

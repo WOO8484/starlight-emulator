@@ -13,6 +13,9 @@
 #import "ARMSX2Core.h"
 #import <pthread.h>
 
+// Host:: 렌더 브리지(ARMSX2Host.mm)에 공유 CAMetalLayer 를 등록한다.
+extern "C" void StarlightARMSX2SetRenderLayer(void *caMetalLayer);
+
 #if defined(ARMSX2_LINKED) && ARMSX2_LINKED
   #include "pcsx2/VMManager.h"
   #include "pcsx2/Host.h"
@@ -108,6 +111,9 @@
         EmuFolders::Resources = std::string(self.resourceRoot.fileSystemRepresentation);
         EmuFolders::Bios      = std::string(self.biosDirectory.fileSystemRepresentation);
         VMManager::Internal::LoadStartupSettings();
+
+        // 렌더 surface 등록: GS 초기화(Host::AcquireRenderWindow) 전에 반드시 수행.
+        StarlightARMSX2SetRenderLayer((__bridge void *)self.metalLayer);
 
         // 2) 부팅 파라미터: 게임 경로 + GS 렌더 대상(metalLayer).
         //    렌더 surface 는 WindowInfo(SetNativeWindow)로 GS 에 전달한다(통합 지점).

@@ -1,14 +1,10 @@
 # project.yml — XcodeGen 스펙 (Windows 에서 작성, Mac 에서 프로젝트/워크스페이스 생성)
 #
-# 사용법(Mac):
-#   brew install xcodegen
-#   cd 07_build && xcodegen generate
-#   → StarlightEmulator.xcodeproj 생성 → Xcode 로 열어 빌드/실기기 실행
+# 기본 상태: 세 엔진 모두 "미링크" 스캐폴드 → 그대로 xcodegen generate 하면 통합-테스트 UI 만 빌드된다.
+# 엔진 링크: 07_build/build_<engine>_ios.sh 로 prebuilt/<engine> 생성 후, 아래 각 엔진 블록의
+#            [LINK] 표시 줄 주석을 해제한다. (build_all_ios.sh 가 순서대로 수행)
 #
-# 엔진 링크 활성화(각 엔진 정적 라이브러리/xcframework 준비 후):
-#   1) 아래 SWIFT_ACTIVE_COMPILATION_CONDITIONS 에 PPSSPP_LINKED ARMSX2_LINKED MELONX_LINKED 중 필요한 것 추가
-#   2) 아래 GCC_PREPROCESSOR_DEFINITIONS 에 동일 매크로를 =1 로 추가(.mm 가드용)
-#   3) dependencies 에 해당 .a / .xcframework 추가, HEADER_SEARCH_PATHS 에 엔진 헤더 경로 추가
+# Mac 최종 흐름:  bash build_all_ios.sh   (PPSSPP→ARMSX2→MeloNX→generate→xcodebuild)
 #
 name: StarlightEmulator
 
@@ -23,10 +19,11 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-    TARGETED_DEVICE_FAMILY: "1"          # iPhone 전용 (지시문 16: iPhone 16 Pro Max 고정)
+    TARGETED_DEVICE_FAMILY: "1"          # iPhone 전용 (지시문 16: iPhone 16 Pro Max)
     ONLY_ACTIVE_ARCH: "YES"
     ENABLE_BITCODE: "NO"
-    CLANG_CXX_LANGUAGE_STANDARD: "gnu++17"
+    CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"   # PCSX2 는 C++20
+    CLANG_CXX_LIBRARY: "libc++"
 
 targets:
   StarlightEmulator:
@@ -37,6 +34,10 @@ targets:
       - path: ../03_adapters
         excludes:
           - "**/*.md"
+      # [LINK ARMSX2] Host:: 재사용 위해 pcsx2-sdl/Main.cpp 를 -DARMSX2_EMBED 로 컴파일:
+      # - path: ../01_sources/ARMSX2/pcsx2-sdl/Main.cpp
+      #   compilerFlags: "-DARMSX2_EMBED=1"
+
     settings:
       base:
         PRODUCT_NAME: StarlightEmulator
@@ -45,32 +46,80 @@ targets:
         CODE_SIGN_ENTITLEMENTS: ../02_host/StarlightEmulator/StarlightEmulator.entitlements
         SWIFT_OBJC_BRIDGING_HEADER: ../02_host/StarlightEmulator/StarlightEmulator-Bridging-Header.h
         CLANG_ENABLE_MODULES: "YES"
-        # 브리지 .h 는 순수 Obj-C 인터페이스만 노출(구현만 .mm/Obj-C++). Swift/C++ interop 모드 불필요.
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
 
-        # 엔진 미링크 기본값(스캐폴드 빌드 가능). 링크 시 매크로 추가:
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""            # 예: "PPSSPP_LINKED ARMSX2_LINKED MELONX_LINKED"
+        # ── 엔진 링크 매크로 (prebuilt 준비 후 해당 항목 추가) ──────────────────
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""   # [LINK] 예: "MELONX_LINKED"
         GCC_PREPROCESSOR_DEFINITIONS:
           - "$(inherited)"
-          # - "PPSSPP_LINKED=1"
-          # - "ARMSX2_LINKED=1"
-          # - "MELONX_LINKED=1"
+          # - "PPSSPP_LINKED=1"     # [LINK PPSSPP]
+          # - "ARMSX2_LINKED=1"     # [LINK ARMSX2]
+          # - "MELONX_LINKED=1"     # [LINK MELONX]  (+ 위 SWIFT_ACTIVE_COMPILATION_CONDITIONS 에도 추가)
 
-        # 엔진 헤더 경로(링크 시 주석 해제/수정):
+        # ── 엔진 헤더 경로 ────────────────────────────────────────────────
         HEADER_SEARCH_PATHS:
           - "$(inherited)"
+          # [LINK PPSSPP]
           # - "$(SRCROOT)/../01_sources/PPSSPP"
+          # [LINK ARMSX2]
           # - "$(SRCROOT)/../01_sources/ARMSX2"
           # - "$(SRCROOT)/../01_sources/ARMSX2/pcsx2"
+          # - "$(SRCROOT)/../01_sources/ARMSX2/common"
+          # - "$(SRCROOT)/../01_sources/ARMSX2/3rdparty/fmt/include"
+          # [LINK MELONX]
           # - "$(SRCROOT)/../01_sources/MeloNX/src/MeloNX/MeloNX/App/Core/Headers"
 
-    # 엔진 정적 라이브러리/프레임워크는 통합 시 여기에 추가:
+        # ── 정적 라이브러리(.a) 검색 경로 ─────────────────────────────────
+        LIBRARY_SEARCH_PATHS:
+          - "$(inherited)"
+          # - "$(SRCROOT)/prebuilt/ppsspp"   # [LINK PPSSPP]
+          # - "$(SRCROOT)/prebuilt/armsx2"   # [LINK ARMSX2]
+        # ── 프레임워크/dylib 검색 경로 ────────────────────────────────────
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          # - "$(SRCROOT)/prebuilt/melonx/XCFrameworks"       # [LINK MELONX]
+          # - "$(SRCROOT)/prebuilt/melonx/DynamicLibraries"   # [LINK MELONX]
+
     dependencies: []
-      # - framework: ../01_sources/MeloNX/src/MeloNX/MeloNX/Dependencies/XCFrameworks/SDL2.xcframework
+      # ── PPSSPP [LINK PPSSPP] ──────────────────────────────────────────
+      # - framework: prebuilt/ppsspp/libMoltenVK.dylib
       #   embed: true
-      # - framework: <Ryujinx NativeAOT 라이브러리(RyujinxHelper.framework 대체)>
+      # (libPPSSPPCore.a 및 3rd-party .a 는 LIBRARY_SEARCH_PATHS + OTHER_LDFLAGS 로 링크:
+      #  OTHER_LDFLAGS 에 "-lPPSSPPCore" 등 추가. 시스템 프레임워크는 BUILD_NOTES §PPSSPP 참조)
+      #
+      # ── ARMSX2 [LINK ARMSX2] ─────────────────────────────────────────
+      # - framework: prebuilt/armsx2/... (필요 시)
+      # (libPCSX2.a, libcommon.a 는 LIBRARY_SEARCH_PATHS + OTHER_LDFLAGS "-lPCSX2 -lcommon")
+      #
+      # ── MeloNX [LINK MELONX] ─────────────────────────────────────────
+      # - framework: prebuilt/melonx/DynamicLibraries/Ryujinx.Headless.SDL2.dylib
       #   embed: true
-      # - target: libPPSSPP           # (별도 정적 라이브러리 타깃으로 추가 가능)
-      # - target: libARMSX2
+      # - framework: prebuilt/melonx/XCFrameworks/SDL2.xcframework
+      #   embed: true
+      # - framework: prebuilt/melonx/XCFrameworks/libavcodec.xcframework
+      #   embed: true
+      # - framework: prebuilt/melonx/XCFrameworks/libavformat.xcframework
+      #   embed: true
+      # - framework: prebuilt/melonx/XCFrameworks/libavutil.xcframework
+      #   embed: true
+      # - framework: prebuilt/melonx/XCFrameworks/libavfilter.xcframework
+      #   embed: true
+      # - framework: prebuilt/melonx/XCFrameworks/libswscale.xcframework
+      #   embed: true
+      # - framework: prebuilt/melonx/XCFrameworks/libswresample.xcframework
+      #   embed: true
+      # - framework: prebuilt/melonx/XCFrameworks/libSPIRV.xcframework
+      #   embed: true
+      # - framework: prebuilt/melonx/XCFrameworks/libteakra.xcframework
+      #   embed: true
+      # - framework: prebuilt/melonx/DynamicLibraries/RyujinxHelper.framework
+      #   embed: true
+      # - framework: prebuilt/melonx/DynamicLibraries/BreakpointJIT.framework
+      #   embed: true
+      # - framework: prebuilt/melonx/DynamicLibraries/libMoltenVK.dylib
+      #   embed: true
 
   # 코어 전환 자동화 테스트(지시문 12항)
   StarlightEmulatorUITests:
@@ -84,7 +133,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.starlight.emulator.uitests
         TEST_TARGET_NAME: StarlightEmulator
-
 
 schemes:
   StarlightEmulator:

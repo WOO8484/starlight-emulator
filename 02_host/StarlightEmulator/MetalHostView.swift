@@ -26,14 +26,14 @@ public final class MetalLayerView: UIView {
 }
 
 public struct MetalHostView: UIViewRepresentable {
-    /// 생성된 레이어를 상위(ViewModel)로 전달.
-    public let onLayer: (CAMetalLayer) -> Void
-    public init(onLayer: @escaping (CAMetalLayer) -> Void) { self.onLayer = onLayer }
+    /// 생성된 렌더 뷰(=CAMetalLayer 보유 + PPSSPP 자식VC 컨테이너)를 상위로 전달.
+    public let onReady: (MetalLayerView) -> Void
+    public init(onReady: @escaping (MetalLayerView) -> Void) { self.onReady = onReady }
 
     public func makeUIView(context: Context) -> MetalLayerView {
         let v = MetalLayerView(frame: .zero)
         v.backgroundColor = .black
-        onLayer(v.metalLayer)
+        onReady(v)
         return v
     }
     public func updateUIView(_ uiView: MetalLayerView, context: Context) {}

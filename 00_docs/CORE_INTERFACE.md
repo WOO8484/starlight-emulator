@@ -90,3 +90,18 @@ Application Support/StarlightEmulator/
 
 ## 7. 미공통화(2단계) — 지시문 5항
 설정 UI · 세이브스테이트 공통 규격 · 치트 · 메타정보 · 커버 · 플레이타임 · 즐겨찾기 · 최종 UI.
+
+## 8. 어댑터 진입점 · 렌더 배선 (링크 준비 결과)
+
+| 엔진 | 렌더 surface 전달 | 코어 진입 | 종료 |
+|---|---|---|---|
+| PPSSPP | `EmulatorContext.renderContainer`(UIView)에 `PPSSPPViewControllerMetal` 자식VC 임베드 | `NativeInit(argv=[app,game])` → VC appear 시 `NativeInitGraphics`/`NativeFrame` | 자식VC 제거 → 렌더루프 종료 → `NativeShutdown` |
+| ARMSX2 | `EmulatorContext.metalLayer` → `StarlightARMSX2SetRenderLayer` → `Host::AcquireRenderWindow`(WindowInfo.MacOS, surface_handle=CAMetalLayer) | 전용 CPU 스레드: `VMManager::Initialize`→`Execute` | `SetState(Stopping)`→스레드 종료→`Shutdown` |
+| MeloNX | `EmulatorContext.metalLayer` → `SN_set_native_window(layer)` | 전용 스레드: `SN_main_ryujinx_sdl(argv)` (블로킹) | `SN_stop_emulation`→스레드 반환 |
+
+- 공통 계층은 `metalLayer`(ARMSX2/MeloNX)와 `renderContainer`(PPSSPP)를 모두 Host 로부터 받는다.
+  둘 다 하나의 `MetalLayerView`(host)에서 나온다: `metalLayer`=그 뷰의 CAMetalLayer, `renderContainer`=그 뷰.
+- 렌더 브리지 파일: PPSSPP `PPSSPPCore.mm`, ARMSX2 `ARMSX2Host.mm`(+`ARMSX2Core.mm`), MeloNX `MeloNXCore.swift`.
+- 링크 매크로: `PPSSPP_LINKED` / `ARMSX2_LINKED`(전처리기) · `MELONX_LINKED`(Swift 조건 + 전처리기).
+  미정의 시 각 어댑터는 "미링크" 오류를 정직히 반환(가짜 성공 없음 — 지시문 22항).
+- 빌드/충돌 상세: `BUILD_NOTES.md §6`, `CONFLICT_ANALYSIS.md`.

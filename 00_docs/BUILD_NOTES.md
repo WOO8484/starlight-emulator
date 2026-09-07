@@ -143,3 +143,51 @@
 → 만약 특정 엔진이 구조적으로 단일 프로세스 통합 불가로 판정되면, 지시문 14항에 따라
    **실제 근거(linker 오류/runtime 제약/필수 별도 process 요구 등)** 를 `PHASE1_RESULT.md` 에 남긴다.
    현재까지는 세 코어 모두 "네이티브 라이브러리+C심볼" 이라 **불가 근거 없음**(= 통합 시도 계속).
+   구체적 충돌 목록·완화책은 `CONFLICT_ANALYSIS.md` 참조(모두 NOT_TESTED).
+
+---
+
+## 6. 엔진별 링크 준비 상세 (지시문 7항 완료 기록)
+
+### 6.1 PPSSPP (PSP)
+- **소스 기준 commit**: `98e70c8ca3435d532a059add0b4fb90a4a091248` (hrydgard/ppsspp, master)
+- **빌드 Target**: `PPSSPPCore`(STATIC, 우리가 append 로 추가) — `${NativeAppSource}` + `ios/*.mm`(단 `ios/main.mm`,`ios/AppDelegate.mm` 제외). 링크: `ppsspp_ui`(또는 `Core`).
+- **생성 라이브러리**: `libPPSSPPCore.a` (+ 하위 정적 `Core`/`Common`/`GPU`/zlib/libzip/png17 등) → `07_build/prebuilt/ppsspp/`
+- **필수 headers**: `Common/System/NativeApp.h`, `Common/System/System.h`, `Common/GPU/GraphicsContext.h`, `ios/ViewControllerMetal.h`
+- **필수 frameworks(시스템)**: Foundation, MediaPlayer, AudioToolbox, CoreGraphics, CoreMotion, QuartzCore, UIKit, GLKit, OpenAL, AVFoundation, CoreLocation, CoreText, CoreVideo, CoreMedia, CoreServices, Metal, IOSurface, Photos, (weak)GameController/PhotosUI
+- **필수 third-party**: libMoltenVK.dylib(ext/vulkan/iOS), ffmpeg(submodule, 정적), zlib/libzip/png17(정적), iconv
+- **필수 심볼(C++)**: `NativeInit`, `NativeInitGraphics`, `NativeResized`, `NativeFrame`, `Native_NotifyWindowHidden`, `NativeShutdownGraphics`, `NativeShutdown`; Obj-C `PPSSPPViewControllerMetal`
+- **entitlements**: 표준 세트로 충분(JIT 없으면 인터프리터). JIT 시 dynamic-codesigning/디버거.
+- **JIT 요구**: 선택(없어도 실행). 있으면 성능↑.
+- **Starlight Adapter 진입점**: `PPSSPPCore.mm`(NativeInit + PPSSPPViewControllerMetal 임베드) ← `PPSSPPAdapter.swift`
+- **원본 수정 여부**: **CMakeLists.txt 끝에 append 1건**(정적 라이브러리 타깃 추가, `04_patches/ppsspp/append_static_lib.cmake`). 코어 소스 무수정.
+
+### 6.2 ARMSX2 (PS2)
+- **소스 기준 commit**: `de57f431c41218a17b0eecae2aabaf5d3b01c16f` (ARMSX2/ARMSX2, master)
+- **빌드 Target**: `PCSX2`(코어) + `common` (정적). 프론트엔드 Host:: 는 `pcsx2-sdl/Main.cpp` 를 Host 타깃에서 `-DARMSX2_EMBED` 로 컴파일해 재사용.
+- **생성 라이브러리**: `libPCSX2.a`, `libcommon.a` (+ `GS-*`/3rdparty 정적) → `07_build/prebuilt/armsx2/`
+- **필수 headers**: `pcsx2/VMManager.h`, `pcsx2/Host.h`, `pcsx2/GS/GS.h`(Host 렌더 그룹), `common/WindowInfo.h`, `pcsx2/ps2/BiosTools.h`
+- **필수 frameworks(시스템)**: Metal, QuartzCore, Foundation, AudioToolbox, AVFoundation, GameController, CoreHaptics, UIKit
+- **필수 third-party**: Vulkan/MoltenVK, SDL3, fmt, imgui, cubeb, soundtouch, zydis, xbyak, vixl, libchdr, libzip, lzma, rapidjson, rcheevos
+- **필수 심볼(C++)**: `VMManager::Internal::LoadStartupSettings`, `VMManager::Initialize`, `VMManager::Execute`, `VMManager::SetState`, `VMManager::HasValidVM`, `VMManager::Shutdown`, `EmuFolders::*`; 우리가 구현: `Host::AcquireRenderWindow/ReleaseRenderWindow/BeginPresentFrame/GetTopLevelWindowInfo/IsFullscreen/SetFullscreen/RequestResizeHostDisplay`(ARMSX2Host.mm), 재사용: 나머지 Host::(총 48개, `pcsx2-sdl/Main.cpp` §436~789)
+- **필수 Host:: 전체 목록**(프론트엔드 구현 대상): CommitBaseSettingChanges, LoadSettings, CheckForSettingsChanges, RequestResetSettings, SetDefaultUISettings, LocaleCircleConfirm, CreateHostProgressCallback, ReportInfoAsync, ReportErrorAsync, OpenURL, CopyTextToClipboard, GetTextFromClipboard, BeginTextInput, EndTextInput, GetTopLevelWindowInfo*, OnInputDeviceConnected, OnInputDeviceDisconnected, SetMouseMode, SetMouseLock, AcquireRenderWindow*, ReleaseRenderWindow*, BeginPresentFrame*, RequestResizeHostDisplay*, OnVMStarting/Started/Destroyed/Paused/Resumed, OnGameChanged, OnPerformanceMetricsUpdated, OnSaveStateLoading/Loaded/Saved, PumpMessagesOnCPUThread, RunOnCPUThread, RefreshGameListAsync, CancelGameListRefresh, IsFullscreen*, SetFullscreen*, RequestExitApplication, RequestExitBigPicture, RequestVMShutdown, OnAchievements*(6), OnCoverDownloaderOpenRequested, OnCreateMemoryCardOpenRequested, InBatchMode, InNoGUIMode, ShouldPreferHostFileSelector, OpenHostFileSelectorAsync, LocaleSensitiveCompare, Internal::GetTranslatedStringImpl, TranslatePluralToString  (`*` = ARMSX2Host.mm 가 대체 구현)
+- **entitlements**: JIT 필수 → dynamic-codesigning(TrollStore) 또는 디버거 경로. increased-memory-limit 권장.
+- **JIT 요구**: EE/IOP/VU recompiler 사실상 필수.
+- **Starlight Adapter 진입점**: `ARMSX2Core.mm`(VMManager, CPU 스레드) + `ARMSX2Host.mm`(Host 렌더 브리지, `StarlightARMSX2SetRenderLayer`) ← `ARMSX2Adapter.swift`
+- **원본 수정 여부**: **`pcsx2-sdl/Main.cpp` 1건 patch**(`main`+렌더그룹 `#ifndef ARMSX2_EMBED`, `04_patches/armsx2/0001-embed-frontend.patch`). 코어(`pcsx2`/`common`) 무수정.
+
+### 6.3 MeloNX (Switch)
+- **소스 기준 commit**: `55f84af15144e40d7fbe8984747855534d2a8ec1` (AzureDominus/melonx, XC-ios-ht)
+- **빌드 Target**: `.NET` `Ryujinx.Headless.SDL2` NativeAOT (`dotnet publish -c Release -r ios-arm64 -p:ExtraDefineConstants=DISABLE_UPDATER --self-contained true`)
+- **생성 라이브러리**: `Ryujinx.Headless.SDL2.dylib` (install_name `@rpath/...`) → `07_build/prebuilt/melonx/`
+- **필수 headers**: (C 심볼은 Swift `@_silgen_name` 로 직접 바인딩, 헤더 불필요) 참고: `App/Core/Headers/Ryujinx-Header.h`
+- **필수 frameworks/dylib**: SDL2.xcframework, libavcodec/avformat/avutil/avfilter/swscale/swresample.xcframework, libSPIRV.xcframework, libteakra.xcframework, RyujinxHelper.framework, BreakpointJIT.framework, (Hypervisor.framework — hv 빌드), libMoltenVK.dylib
+- **필수 third-party**: 위 벤더 프레임워크 일체 + .NET 8 NativeAOT 런타임(정적 링크됨)
+- **필수 심볼(C, UnmanagedCallersOnly → Swift SN_*)**: `main_ryujinx_sdl`, `set_native_window`, `pause_emulation`, `stop_emulation`, `initialize`, `initialize-dualmapped`, `set_view_size`, `touch_began/moved/ended`, `set_gamepad_configuration`, `set_gamepad_button_state`, `set_gamepad_stick_axis`, `set_gamepad_motion_axis`, `attach_gamepad`, `detach_gamepad`, `update_settings_external`, `get_current_fps`, `get_game_volume`, `set_game_volume`, `install_firmware`, `installed_firmware_version`, `free_firmware_version`, `get_game_info`, `free_game_info`, `get_dlc_nca_list`, `refresh_account_manager`, `create_account`, `delete_account`, `open_user`, `close_user`, `get_avatars`, `free_avatars` (전체 33개)
+  - Starlight 1단계 실사용: `initialize`, `initialize-dualmapped`, `main_ryujinx_sdl`, `set_native_window`, `set_view_size`, `pause_emulation`, `stop_emulation`, `touch_*` (MeloNXCore.swift)
+- **entitlements**: dynamic-codesigning(사이드로드) 또는 하이퍼바이저 사설세트(TrollStore, `MeloNX-hv.entitlements`); increased-memory-limit + extended-virtual-addressing.
+- **JIT 요구**: 필수(게스트 ARM 실행). dynamic-codesigning 또는 dual-mapped+디버거(JitStreamerEB/StikJIT), 또는 하이퍼바이저.
+- **Starlight Adapter 진입점**: `MeloNXCore.swift`(SN_* 래퍼, 전용 스레드 runMain) ← `MeloNXAdapter.swift`
+- **원본 수정 여부**: **없음(0)**. 빌드 스크립트만 사용(distribution/ios/compile.sh 근거).
+- **공식 upstream 과의 차이**: §3 참조(공개 미러, 2026-06 커밋, 정식 릴리스 대비 지연 가능).
+

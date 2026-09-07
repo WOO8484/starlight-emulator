@@ -19,7 +19,7 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             // 렌더 surface(항상 존재해야 레이어가 만들어짐). 코어가 여기에 그린다.
-            MetalHostView { layer in vm.attachLayer(layer) }
+            MetalHostView { view in vm.attach(hostView: view) }
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 12) {

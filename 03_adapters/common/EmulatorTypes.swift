@@ -104,8 +104,13 @@ public enum EmulatorError: Error, CustomStringConvertible, Sendable {
 /// 지시문 13항 데이터 격리를 위해 경로는 시스템별로 분리되어 전달된다.
 public struct EmulatorContext: Sendable {
     /// 이 코어가 그릴 Metal 레이어. Host 가 소유하고 코어에 대여한다.
+    /// ARMSX2(Host::AcquireRenderWindow) / MeloNX(set_native_window) 가 이 포인터를 사용.
     /// 코어 stop 후에도 레이어 자체는 파괴하지 않는다(재실행 대비).
     public let metalLayer: CAMetalLayer
+
+    /// 렌더 컨테이너 뷰(iOS: UIView). PPSSPP 처럼 엔진이 자체 뷰(ViewControllerMetal)를
+    /// 임베드하는 경우 여기에 자식 VC 뷰를 붙인다. 공통 계층의 UIKit 의존을 피하려 AnyObject 로 둔다.
+    public let renderContainer: AnyObject?
 
     /// 이 시스템 전용 데이터 루트 (Application Support/<dataFolderName>).
     /// 하위에 config/, save/, cache/, bios/, firmware/, keys/, shader/ 를 둔다.
@@ -121,11 +126,13 @@ public struct EmulatorContext: Sendable {
     public let jitAvailable: Bool
 
     public init(metalLayer: CAMetalLayer,
+                renderContainer: AnyObject? = nil,
                 dataRoot: URL,
                 resourceRoot: URL,
                 sharedGameLibrary: URL? = nil,
                 jitAvailable: Bool) {
         self.metalLayer = metalLayer
+        self.renderContainer = renderContainer
         self.dataRoot = dataRoot
         self.resourceRoot = resourceRoot
         self.sharedGameLibrary = sharedGameLibrary
