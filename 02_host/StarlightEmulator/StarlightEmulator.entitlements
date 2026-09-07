@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  StarlightEmulator.entitlements  (개발/사이드로드 표준 세트)
+
+  지시문 10항: JIT/메모리 권한을 개별 앱이 아니라 최종 Host 앱 기준으로 정리.
+  이 파일은 일반 개발자 서명(AltStore/SideStore/Xcode 실기기)에서 사용 가능한 항목만 담는다.
+  세 엔진 요구의 합집합 중 "표준 서명으로 가능한" 부분.
+
+  * dynamic-codesigning(JIT)은 표준 개발자 프로필로는 부여되지 않는다.
+    → 이 세트에서는 get-task-allow(디버거 부착)로 JIT 를 활성한다
+      (JITManager 의 CS_DEBUGGED 경로 = AltStore/SideStore/JitStreamer/StikJIT).
+  * TrollStore/특수 서명이 가능하면 StarlightEmulator-TrollStore.entitlements 사용.
+-->
+<plist version="1.0">
+<dict>
+    <!-- 디버거 부착 허용 → JIT 활성 경로(표준 사이드로드) -->
+    <key>get-task-allow</key>
+    <true/>
+
+    <!-- PS2/Switch 코어의 대용량 메모리 요구(지시문 10항) -->
+    <key>com.apple.developer.kernel.increased-memory-limit</key>
+    <true/>
+    <key>com.apple.developer.kernel.extended-virtual-addressing</key>
+    <true/>
+</dict>
+</plist>

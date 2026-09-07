@@ -1,0 +1,35 @@
+# === 캐시/임시/빌드 산출물 (지시문 0항: _cache 하위로 재지정) ===
+_cache/
+07_build/DerivedData/
+07_build/*.xcodeproj/
+07_build/*.xcworkspace/
+09_output/*.ipa
+09_output/Payload/
+08_logs/*.log
+
+# === upstream 엔진 원본 (대용량) ===
+# 우리 저장소에는 커밋하지 않는다. submodule 또는 UPDATE_GUIDE 절차로 확보.
+# (분석용 shallow 클론이 로컬 디스크에는 존재)
+01_sources/PPSSPP/
+01_sources/ARMSX2/
+01_sources/MeloNX/
+
+# === 테스트 데이터 (게임/BIOS/keys 등 대용량·저작권) ===
+05_testdata/**/*.iso
+05_testdata/**/*.cso
+05_testdata/**/*.chd
+05_testdata/**/*.nsp
+05_testdata/**/*.xci
+05_testdata/**/*.bin
+05_testdata/**/prod.keys
+05_testdata/**/*.keys
+
+# === macOS/Xcode ===
+.DS_Store
+xcuserdata/
+*.xcuserstate
+build/
+
+# === 기타 ===
+*.tmp
+Thumbs.db

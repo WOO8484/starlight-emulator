@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  StarlightEmulator-TrollStore.entitlements  (TrollStore/특수 서명 전용)
+
+  세 엔진의 최대 성능 경로를 모두 여는 합집합.
+  - dynamic-codesigning: RWX(JIT) 를 서명 권한으로 직접 허용(ARMSX2/MeloNX/PPSSPP 공통).
+  - com.apple.private.hypervisor: MeloNX 의 하이퍼바이저 실행(최고 성능) — 사설 권한.
+  - increased-memory-limit / extended-virtual-addressing: PS2/Switch 대용량 메모리.
+  ⚠ 사설(private) 권한은 App Store/일반 개발자 서명으로는 불가. TrollStore 등에서만 유효.
+    출처: 01_sources/MeloNX/MeloNX-hv.entitlements, 01_sources/ARMSX2/pcsx2/Resources/ARMSX2.entitlements
+-->
+<plist version="1.0">
+<dict>
+    <key>get-task-allow</key>
+    <true/>
+    <key>dynamic-codesigning</key>
+    <true/>
+
+    <key>com.apple.developer.kernel.increased-memory-limit</key>
+    <true/>
+    <key>com.apple.developer.kernel.extended-virtual-addressing</key>
+    <true/>
+
+    <!-- ARMSX2 계열(하드닝 런타임형) JIT 권한 -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- MeloNX 하이퍼바이저/시스템 경로(사설) -->
+    <key>com.apple.private.hypervisor</key>
+    <true/>
+    <key>com.apple.vm.device-access</key>
+    <true/>
+    <key>com.apple.private.memorystatus</key>
+    <true/>
+    <key>platform-application</key>
+    <true/>
+</dict>
+</plist>
