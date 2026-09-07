@@ -39,12 +39,12 @@ public final class PPSSPPAdapter: NSObject, EmulatorModule {
     public func launch(_ game: GameDescriptor) throws {
         guard let core = core else { throw EmulatorError.notInitialized }
         state = .launching
-        var nsError: NSError?
-        let ok = core.bootGame(atPath: game.url.path, error: &nsError)
-        if !ok {
-            let msg = nsError?.localizedDescription ?? "알 수 없는 오류"
+        do {
+            // Obj-C 의 (BOOL … error:) 는 Swift 에서 throws 로 임포트된다.
+            try core.bootGame(atPath: game.url.path)
+        } catch {
             state = .failed
-            throw EmulatorError.launchFailed(msg)
+            throw EmulatorError.launchFailed((error as NSError).localizedDescription)
         }
         // 실제 running 전환은 코어 델리게이트에서 통지된다.
     }

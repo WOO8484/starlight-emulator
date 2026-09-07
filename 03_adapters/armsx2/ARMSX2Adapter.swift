@@ -46,10 +46,12 @@ public final class ARMSX2Adapter: NSObject, EmulatorModule {
             throw EmulatorError.missingResource("PS2 BIOS 를 <dataRoot>/bios 에 넣어야 합니다.")
         }
         state = .launching
-        var nsError: NSError?
-        if !core.bootGame(atPath: game.url.path, error: &nsError) {
+        do {
+            // Obj-C 의 (BOOL … error:) 는 Swift 에서 throws 로 임포트된다.
+            try core.bootGame(atPath: game.url.path)
+        } catch {
             state = .failed
-            throw EmulatorError.launchFailed(nsError?.localizedDescription ?? "알 수 없는 오류")
+            throw EmulatorError.launchFailed((error as NSError).localizedDescription)
         }
     }
 

@@ -45,7 +45,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: ../02_host/StarlightEmulator/StarlightEmulator.entitlements
         SWIFT_OBJC_BRIDGING_HEADER: ../02_host/StarlightEmulator/StarlightEmulator-Bridging-Header.h
         CLANG_ENABLE_MODULES: "YES"
-        SWIFT_OBJC_INTEROP_MODE: objcxx    # Swift ↔ C++/Obj-C++ 상호운용
+        # 브리지 .h 는 순수 Obj-C 인터페이스만 노출(구현만 .mm/Obj-C++). Swift/C++ interop 모드 불필요.
 
         # 엔진 미링크 기본값(스캐폴드 빌드 가능). 링크 시 매크로 추가:
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""            # 예: "PPSSPP_LINKED ARMSX2_LINKED MELONX_LINKED"
