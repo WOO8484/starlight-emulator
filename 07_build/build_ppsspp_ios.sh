@@ -51,6 +51,10 @@ cmake --build "$BUILD" --target PPSSPPCore -j 2>&1 | tee "$LOG/ppsspp_build.log"
 
 echo "[PPSSPP] 산출물 수집 → $OUT"
 find "$BUILD" -name '*.a' -exec cp -v {} "$OUT/" \;
+# PPSSPP 동봉 ffmpeg(iOS) 정적 라이브러리(서브모듈, 빌드 디렉토리 밖)
+if [ -d "$SRC/ffmpeg/ios/universal/lib" ]; then
+  cp -v "$SRC/ffmpeg/ios/universal/lib/"*.a "$OUT/" 2>/dev/null || true
+fi
 # MoltenVK (PPSSPP 동봉본)
 cp -v "$SRC/ext/vulkan/iOS/Frameworks/libMoltenVK.dylib" "$OUT/" 2>/dev/null || \
   echo "  경고: libMoltenVK.dylib 위치 확인 필요"

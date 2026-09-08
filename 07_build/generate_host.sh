@@ -46,7 +46,11 @@ if [ "${LINK_PPSSPP:-0}" = "1" ] && ls "$PB/ppsspp/"*.a >/dev/null 2>&1; then
             Metal IOSurface Photos; do
     LDFLAGS="$LDFLAGS -framework $fw"
   done
-  LDFLAGS="$LDFLAGS -weak_framework GameController -weak_framework PhotosUI -liconv"
+  LDFLAGS="$LDFLAGS -weak_framework GameController -weak_framework PhotosUI"
+  # 시스템 라이브러리: zlib(adler32 등) / bz2 / iconv (ffmpeg·core 요구)
+  LDFLAGS="$LDFLAGS -lz -lbz2 -liconv"
+  # ffmpeg 하드웨어/미디어 프레임워크
+  LDFLAGS="$LDFLAGS -framework VideoToolbox"
 fi
 
 # ---- ARMSX2 (정적 라이브러리) : LINK_ARMSX2=1 일 때만 링크 ----
