@@ -33,17 +33,21 @@ else
   echo "  이미 append 됨"
 fi
 
-echo "[PPSSPP] CMake 구성(iOS arm64)"
+echo "[PPSSPP] CMake 구성(iOS arm64, Ninja 생성기)"
+# Ninja 를 쓰는 이유: Xcode 생성기는 GitVersion 커스텀 커맨드가 만드는 git-version.cpp 의
+# 생성 순서를 보장하지 못해 'Build input file cannot be found: git-version.cpp' 로 실패한다.
+# Ninja 는 생성 파일 의존성을 정확히 정렬한다.
 BUILD="$SRC/build-ios-starlight"
-cmake -S "$SRC" -B "$BUILD" -G Xcode \
+cmake -S "$SRC" -B "$BUILD" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="$SRC/cmake/Toolchains/ios.cmake" \
   -DIOS=ON -DIOS_PLATFORM=OS \
+  -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_OSX_ARCHITECTURES=arm64 \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
   -DUSING_QT_UI=OFF 2>&1 | tee "$LOG/ppsspp_cmake.log"
 
 echo "[PPSSPP] 정적 라이브러리 빌드"
-cmake --build "$BUILD" --config Release --target PPSSPPCore 2>&1 | tee "$LOG/ppsspp_build.log"
+cmake --build "$BUILD" --target PPSSPPCore -j 2>&1 | tee "$LOG/ppsspp_build.log"
 
 echo "[PPSSPP] 산출물 수집 → $OUT"
 find "$BUILD" -name '*.a' -exec cp -v {} "$OUT/" \;

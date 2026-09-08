@@ -35,21 +35,38 @@ else
   echo "  ⚠ 자동 적용 실패(컨텍스트 불일치). patch 헤더 지침대로 수동 삽입 후 재생성 필요(NOT_TESTED)."
 fi
 
-echo "[ARMSX2] CMake 구성(iOS arm64, Xcode 생성기)"
+echo "[ARMSX2] iOS용 libpng 빌드 (PCSX2 는 PNG>=1.6.40 요구; iOS SDK 미제공)"
+PNG_PREFIX="$OUT/deps/libpng"
+if [ ! -f "$PNG_PREFIX/lib/libpng16.a" ]; then
+  PNGSRC="$SRC/../_libpng_src"; rm -rf "$PNGSRC"
+  git clone --depth=1 --branch v1.6.44 https://github.com/pnggroup/libpng.git "$PNGSRC"
+  cmake -S "$PNGSRC" -B "$PNGSRC/build-ios" -G Ninja \
+    -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 -DCMAKE_OSX_SYSROOT=iphoneos \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PNG_PREFIX" \
+    -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_FRAMEWORK=OFF -DPNG_TESTS=OFF -DPNG_TOOLS=OFF 2>&1 | tee "$LOG/armsx2_libpng.log"
+  cmake --build "$PNGSRC/build-ios" --target install -j 2>&1 | tee -a "$LOG/armsx2_libpng.log"
+fi
+PNG_LIB=$(ls "$PNG_PREFIX"/lib/libpng16*.a 2>/dev/null | head -1)
+echo "  libpng: $PNG_LIB"
+
+echo "[ARMSX2] CMake 구성(iOS arm64, Ninja 생성기)"
 BUILD="$SRC/build-ios-starlight"
-cmake -S "$SRC" -B "$BUILD" -G Xcode \
+cmake -S "$SRC" -B "$BUILD" -G Ninja \
   -DCMAKE_SYSTEM_NAME=iOS \
   -DCMAKE_OSX_ARCHITECTURES=arm64 \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
   -DCMAKE_OSX_SYSROOT=iphoneos \
+  -DCMAKE_BUILD_TYPE=Release \
   -DPACKAGE_MODE=OFF -DDISABLE_ADVANCE_SIMD=ON \
-  -DUSE_VULKAN=ON 2>&1 | tee "$LOG/armsx2_cmake.log"
+  -DUSE_VULKAN=ON \
+  -DPNG_PNG_INCLUDE_DIR="$PNG_PREFIX/include" \
+  -DPNG_LIBRARY="$PNG_LIB" 2>&1 | tee "$LOG/armsx2_cmake.log"
 
 echo "[ARMSX2] 코어 라이브러리 빌드 (PCSX2 + common)"
-# Main.cpp 는 ARMSX2_EMBED 로 main() 제외 컴파일(정의는 patch 참고). 프론트엔드 Host:: 재사용을 위해
-# pcsx2-sdl 오브젝트도 라이브러리로 필요하면 함께 빌드한다.
-cmake --build "$BUILD" --config Release --target PCSX2 2>&1 | tee "$LOG/armsx2_build.log"
-cmake --build "$BUILD" --config Release --target common 2>&1 | tee -a "$LOG/armsx2_build.log"
+# Main.cpp 는 Host 타깃에서 -DARMSX2_EMBED 로 컴파일(정의는 patch 참고).
+cmake --build "$BUILD" --target PCSX2 -j 2>&1 | tee "$LOG/armsx2_build.log"
+cmake --build "$BUILD" --target common -j 2>&1 | tee -a "$LOG/armsx2_build.log"
 
 echo "[ARMSX2] 산출물 수집 → $OUT"
 find "$BUILD" -name '*.a' -exec cp -v {} "$OUT/" \;
