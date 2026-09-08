@@ -22,17 +22,23 @@ cmib() {  # cmib <name> <srcSubdir-or-.> <extra cmake args...>
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 -DCMAKE_OSX_SYSROOT=iphoneos \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$DEPS" \
-    -DCMAKE_PREFIX_PATH="$DEPS" -DBUILD_SHARED_LIBS=OFF "$@" 2>&1 | tee -a "$LOG/armsx2_deps.log"
+    -DCMAKE_PREFIX_PATH="$DEPS" -DCMAKE_FIND_ROOT_PATH="$DEPS" \
+    -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH \
+    -DBUILD_SHARED_LIBS=OFF "$@" 2>&1 | tee -a "$LOG/armsx2_deps.log"
   cmake --build "$SRCD/$name/_bios" --target install -j 2>&1 | tee -a "$LOG/armsx2_deps.log"
 }
-clone() { [ -d "$SRCD/$1" ] || git clone --depth=1 --branch "$3" "$2" "$SRCD/$1"; }
+clone() { # clone <name> <url> <tag> [recurse]
+  [ -d "$SRCD/$1" ] && return 0
+  local rec=""; [ "${4:-}" = "recurse" ] && rec="--recurse-submodules"
+  git clone --depth=1 $rec --branch "$3" "$2" "$SRCD/$1"
+}
 
 # 1) libpng
 clone libpng https://github.com/pnggroup/libpng.git v1.6.44
 cmib libpng . -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_FRAMEWORK=OFF -DPNG_TESTS=OFF -DPNG_TOOLS=OFF
 
-# 2) libjpeg-turbo (JPEG)
-clone jpeg https://github.com/libjpeg-turbo/libjpeg-turbo.git 3.0.4
+# 2) libjpeg-turbo (JPEG) — 3.1.1 (CMake 4.x 호환)
+clone jpeg https://github.com/libjpeg-turbo/libjpeg-turbo.git 3.1.1
 cmib jpeg . -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DWITH_TURBOJPEG=OFF
 
 # 3) zstd
@@ -61,8 +67,8 @@ cmib freetype . -DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_BROTLI=ON -DFT_DISABLE_BZI
 clone plutovg https://github.com/sammycage/plutovg.git v1.1.0
 cmib plutovg . -DPLUTOVG_BUILD_EXAMPLES=OFF
 
-# 9) plutosvg (plutovg + freetype 사용)
-clone plutosvg https://github.com/sammycage/plutosvg.git v0.0.7
+# 9) plutosvg (plutovg 서브모듈 + freetype 사용) — recursive clone 필요
+clone plutosvg https://github.com/sammycage/plutosvg.git v0.0.7 recurse
 cmib plutosvg . -DPLUTOSVG_BUILD_EXAMPLES=OFF -DPLUTOSVG_ENABLE_FREETYPE=ON
 
 echo "[deps] 완료. 설치 prefix: $DEPS"
