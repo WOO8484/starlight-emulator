@@ -37,9 +37,10 @@ clone() { # clone <name> <url> <tag> [recurse]
 clone libpng https://github.com/pnggroup/libpng.git v1.6.44
 cmib libpng . -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_FRAMEWORK=OFF -DPNG_TESTS=OFF -DPNG_TOOLS=OFF
 
-# 2) libjpeg-turbo (JPEG) — 3.1.1 (CMake 4.x 호환)
+# 2) libjpeg-turbo (JPEG) — 3.1.1 (CMake 4.x: 구 정책 허용 플래그)
 clone jpeg https://github.com/libjpeg-turbo/libjpeg-turbo.git 3.1.1
-cmib jpeg . -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DWITH_TURBOJPEG=OFF
+cmib jpeg . -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DWITH_TURBOJPEG=OFF \
+  -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
 # 3) zstd
 clone zstd https://github.com/facebook/zstd.git v1.5.6
@@ -71,5 +72,13 @@ cmib plutovg . -DPLUTOVG_BUILD_EXAMPLES=OFF
 clone plutosvg https://github.com/sammycage/plutosvg.git v0.0.7 recurse
 cmib plutosvg . -DPLUTOSVG_BUILD_EXAMPLES=OFF -DPLUTOSVG_ENABLE_FREETYPE=ON
 
+# 10) Shaderc (Vulkan 셰이더 컴파일러) + glslang/SPIRV-Tools/SPIRV-Headers (git-sync-deps)
+if [ ! -d "$SRCD/shaderc" ]; then
+  git clone --depth=1 --branch v2024.4 https://github.com/google/shaderc.git "$SRCD/shaderc"
+  ( cd "$SRCD/shaderc" && python3 ./utils/git-sync-deps ) 2>&1 | tee -a "$LOG/armsx2_deps.log"
+fi
+cmib shaderc . -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON \
+  -DSHADERC_SKIP_COPYRIGHT_CHECK=ON -DSHADERC_ENABLE_SHARED_CRT=OFF
+
 echo "[deps] 완료. 설치 prefix: $DEPS"
-ls -R "$DEPS/lib" 2>/dev/null | head -40 || true
+ls -R "$DEPS/lib" 2>/dev/null | head -60 || true
