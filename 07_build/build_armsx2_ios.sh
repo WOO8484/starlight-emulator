@@ -57,13 +57,12 @@ cmake -S "$SRC" -B "$BUILD" -G Ninja \
   -DENABLE_QT_UI=OFF \
   -DUSE_VULKAN=ON 2>&1 | tee "$LOG/armsx2_cmake.log"
 
-echo "[ARMSX2] 코어 + 3rdparty 전체 빌드 (프론트엔드 타깃으로 의존성 일괄 빌드)"
-# PCSX2 는 DISABLE_ADVANCE_SIMD=ON 이라 OBJECT 라이브러리(.a 없음). 프론트엔드(pcsx2-sdl) 타깃을
-# 빌드하면 PCSX2 오브젝트 + 모든 3rdparty(.a) + common 이 만들어진다. exe 최종 링크는 실패해도
-# (iOS 프레임워크 미지정) 라이브러리는 이미 생성되므로 무시하고 수집한다.
-cmake --build "$BUILD" --target common -j 2>&1 | tee "$LOG/armsx2_build.log" || true
-cmake --build "$BUILD" --target pcsx2-sdl -j 2>&1 | tee -a "$LOG/armsx2_build.log" \
-  || echo "(pcsx2-sdl exe 최종 링크 무시 — 정적 라이브러리는 생성됨)"
+echo "[ARMSX2] 전체(all) 빌드 — PCSX2 오브젝트 + 모든 3rdparty(.a) + common"
+# PCSX2 는 DISABLE_ADVANCE_SIMD=ON 이라 OBJECT 라이브러리(.a 없음). 기본 all 타깃을 빌드하면
+# PCSX2 오브젝트 + 모든 3rdparty(.a) + common 이 만들어진다. (프론트엔드 exe 가 있으면 최종 링크
+# 실패할 수 있으나 라이브러리는 이미 생성되므로 || true 로 무시)
+cmake --build "$BUILD" -j 2>&1 | tee "$LOG/armsx2_build.log" \
+  || echo "(일부 exe 최종 링크 실패 무시 — 정적 라이브러리/오브젝트는 생성됨)"
 
 echo "[ARMSX2] PCSX2 OBJECT → libPCSX2.a 아카이브"
 OBJDIR="$BUILD/pcsx2/CMakeFiles/PCSX2.dir"
