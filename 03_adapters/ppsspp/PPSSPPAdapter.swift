@@ -64,7 +64,7 @@ public final class PPSSPPAdapter: NSObject, EmulatorModule {
 // MARK: - PPSSPPCoreDelegate
 
 extension PPSSPPAdapter: PPSSPPCoreDelegate {
-    public func ppssppCoreDidChangeState(_ s: PPSSPPCoreState) {
+    public func ppssppCoreDidChange(_ s: PPSSPPCoreState) {
         switch s {
         case .idle:    state = .idle
         case .running: state = .running

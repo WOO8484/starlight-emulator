@@ -37,7 +37,7 @@ echo "[PPSSPP] CMake 구성(iOS arm64)"
 BUILD="$SRC/build-ios-starlight"
 cmake -S "$SRC" -B "$BUILD" -G Xcode \
   -DCMAKE_TOOLCHAIN_FILE="$SRC/cmake/Toolchains/ios.cmake" \
-  -DIOS=ON -DIOS_PLATFORM=OS64 \
+  -DIOS=ON -DIOS_PLATFORM=OS \
   -DCMAKE_OSX_ARCHITECTURES=arm64 \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
   -DUSING_QT_UI=OFF 2>&1 | tee "$LOG/ppsspp_cmake.log"

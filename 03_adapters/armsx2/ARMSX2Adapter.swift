@@ -63,7 +63,7 @@ public final class ARMSX2Adapter: NSObject, EmulatorModule {
 }
 
 extension ARMSX2Adapter: ARMSX2CoreDelegate {
-    public func armsx2CoreDidChangeState(_ s: ARMSX2CoreState) {
+    public func armsx2CoreDidChange(_ s: ARMSX2CoreState) {
         switch s {
         case .idle: state = .idle
         case .running: state = .running
