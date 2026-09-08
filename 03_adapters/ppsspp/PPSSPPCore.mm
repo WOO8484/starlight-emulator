@@ -19,6 +19,7 @@
 #if defined(PPSSPP_LINKED) && PPSSPP_LINKED
   #include "Common/System/NativeApp.h"
   #include "Common/System/System.h"
+  #include "Core/CmdLine.h"              // CommandLineOptions (정의)
   #import  "ios/ViewControllerMetal.h"   // PPSSPPViewControllerMetal
 #endif
 
@@ -88,6 +89,8 @@
     //    (원래 ios/AppDelegate.mm 이 하던 일을 우리가 대신한다.)
     const char *argv[] = { "StarlightEmulator", path.UTF8String };
     CommandLineOptions opts;
+    opts.mode = CmdLineMode::Application;
+    opts.Parse(2, argv, CmdLineMode::Application);   // argv[1](게임 경로) → bootFilenames
     NativeInit(2, argv, opts,
                self.dataRoot.fileSystemRepresentation,        // savegame_dir(MemoryStick)
                self.resourceRoot.fileSystemRepresentation,    // external_dir(assets/flash0)
