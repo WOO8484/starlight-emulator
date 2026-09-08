@@ -15,10 +15,19 @@
 [PASS]       Mac 빌드 스크립트 (build_ppsspp/armsx2/melonx/generate_host/build_all + project.yml 배선)
 [PASS]       충돌 사전 점검 (CONFLICT_ANALYSIS.md — 링크/SDL/FFmpeg/MoltenVK/JIT, 전부 NOT_TESTED)
 [PASS]       테스트 절차 (체크리스트 + XCUITest 자동화)
-[NOT_TESTED] 실기기 항목 (빌드/실행/렌더/오디오/입력/전환/IPA)
+[PASS]       CI 빌드 파이프라인 준비 (.github/workflows/ios-build.yml + CI_BUILD_GUIDE.md)
+[NOT_TESTED] CI 실제 실행 (GitHub Actions macOS 컴파일/링크/unsigned IPA)
+[NOT_TESTED] 실기기 항목 (설치/실행/렌더/오디오/입력/전환)
 ```
-→ **완전 완료 아님.** Windows 에서 준비 가능한 링크/빌드 작업은 종료. 남은 것은 Mac 에서
-   `bash 07_build/build_all_ios.sh` → 컴파일 오류 수정 → 실기기 테스트.
+→ **완전 완료 아님.** 이 개발 환경은 Windows(+gh/remote 없음)라 CI 를 직접 실행할 수 없다.
+   남은 것은 **사용자가 저장소 push → Actions Run workflow → 로그/IPA artifact 회수** 후
+   Windows 에서 오류 수정 루프를 돌리고, iPhone 16 Pro Max 에서 실기기 검증하는 것이다(CI_BUILD_GUIDE.md).
+
+## GitHub Actions (CI 빌드)
+- Runner: **NOT_TESTED** (워크플로 준비됨: 기본 `macos-26`, 입력으로 변경 가능)
+- macOS / Xcode / iOS SDK / Architecture: **NOT_TESTED** (첫 실행 시 08_logs/ci_environment.log 에 기록)
+- 워크플로: `.github/workflows/ios-build.yml` (workflow_dispatch, 엔진→Host→unsigned IPA, artifact 회수)
+- 기준 commit 고정: PPSSPP 98e70c8 / ARMSX2 de57f43 / MeloNX 55f84af (임의 최신화 안 함)
 
 ---
 

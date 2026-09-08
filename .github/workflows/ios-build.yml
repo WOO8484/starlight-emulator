@@ -1,0 +1,184 @@
+name: iOS Build (Starlight Phase 1)
+
+# 수동 실행 기본(불필요한 macOS 빌드 비용 방지). 필요 시 push 트리거 추가 가능.
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "macOS runner label"
+        default: "macos-26"
+        type: string
+      skip_ppsspp:
+        description: "Skip PPSSPP build"
+        default: false
+        type: boolean
+      skip_armsx2:
+        description: "Skip ARMSX2 build"
+        default: false
+        type: boolean
+      skip_melonx:
+        description: "Skip MeloNX build"
+        default: false
+        type: boolean
+      build_host:
+        description: "Generate + build Host after engines"
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runner || 'macos-26' }}
+    env:
+      # 기준 commit (BUILD_NOTES 기록과 동일). 임의 최신화 금지.
+      PPSSPP_COMMIT: "98e70c8ca3435d532a059add0b4fb90a4a091248"
+      ARMSX2_COMMIT: "de57f431c41218a17b0eecae2aabaf5d3b01c16f"
+      MELONX_COMMIT: "55f84af15144e40d7fbe8984747855534d2a8ec1"
+    steps:
+      - name: Checkout (our repo; upstream engines are cloned by scripts)
+        uses: actions/checkout@v4
+
+      - name: Environment info → 08_logs/ci_environment.log
+        run: |
+          mkdir -p 08_logs
+          {
+            echo "=== CI environment $(date) ==="
+            sw_vers || true
+            echo "arch: $(uname -m)"
+            echo "--- Xcode candidates ---"; ls /Applications | grep -i Xcode || true
+            xcodebuild -version || true
+            xcrun --sdk iphoneos --show-sdk-path || true
+            echo "--- tools ---"
+            cmake --version 2>/dev/null | head -1 || echo "cmake: none"
+            ninja --version 2>/dev/null || echo "ninja: none"
+            git --version
+            python3 --version || true
+            dotnet --info 2>/dev/null | head -12 || echo "dotnet: none"
+          } | tee 08_logs/ci_environment.log
+
+      - name: Select Xcode (prefer 26.6, else default)
+        run: |
+          if [ -d "/Applications/Xcode_26.6.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+          fi
+          echo "Using: $(xcodebuild -version | tr '\n' ' ')" | tee -a 08_logs/ci_environment.log
+
+      - name: Install build tools (xcodegen/cmake/ninja)
+        run: |
+          for f in xcodegen cmake ninja; do
+            brew list "$f" >/dev/null 2>&1 || brew install "$f"
+          done
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install .NET iOS workload (for MeloNX NativeAOT)
+        if: ${{ !inputs.skip_melonx }}
+        run: dotnet workload install ios --skip-manifest-update || dotnet workload install ios
+
+      # ---- 엔진 빌드 (실패해도 로그 회수 위해 continue-on-error) ----
+      - name: Build PPSSPP (iOS static lib)
+        if: ${{ !inputs.skip_ppsspp }}
+        continue-on-error: true
+        run: bash 07_build/build_ppsspp_ios.sh
+
+      - name: Build ARMSX2 (iOS core libs)
+        if: ${{ !inputs.skip_armsx2 }}
+        continue-on-error: true
+        run: bash 07_build/build_armsx2_ios.sh
+
+      - name: Build MeloNX (NativeAOT dylib)
+        if: ${{ !inputs.skip_melonx }}
+        continue-on-error: true
+        run: bash 07_build/build_melonx_ios.sh
+
+      - name: Verify engine artifacts/symbols
+        continue-on-error: true
+        run: |
+          {
+            echo "=== engine artifact verification ==="
+            for d in ppsspp armsx2 melonx; do
+              echo "--- 07_build/prebuilt/$d ---"; ls -la "07_build/prebuilt/$d" 2>/dev/null || echo "(none)"
+            done
+            DY="07_build/prebuilt/melonx/Ryujinx.Headless.SDL2.dylib"
+            if [ -f "$DY" ]; then
+              echo "--- MeloNX dylib arch ---"; lipo -info "$DY" || file "$DY"
+              echo "--- MeloNX C ABI exports (기대: main_ryujinx_sdl/set_native_window/...) ---"
+              nm -gU "$DY" 2>/dev/null | grep -iE "main_ryujinx_sdl|set_native_window|pause_emulation|stop_emulation|touch_" || echo "(export 확인 실패)"
+            fi
+          } | tee 08_logs/engine_verify.log
+
+      # ---- Host 생성 + 빌드 ----
+      - name: Generate Host project
+        if: ${{ inputs.build_host }}
+        continue-on-error: true
+        run: bash 07_build/generate_host.sh
+
+      - name: Build Host (unsigned)
+        if: ${{ inputs.build_host }}
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project 07_build/StarlightEmulator.xcodeproj \
+            -scheme StarlightEmulator \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath 07_build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee 08_logs/host_build.log
+
+      - name: Package unsigned IPA
+        if: ${{ inputs.build_host }}
+        continue-on-error: true
+        run: |
+          APP=$(find 07_build/DerivedData -name 'StarlightEmulator.app' -type d | head -1)
+          mkdir -p 09_output
+          if [ -n "$APP" ] && [ -d "$APP" ]; then
+            rm -rf 09_output/Payload 09_output/StarlightEmulator_Phase1_unsigned.ipa
+            mkdir -p 09_output/Payload
+            cp -R "$APP" 09_output/Payload/
+            (cd 09_output && zip -qr StarlightEmulator_Phase1_unsigned.ipa Payload && rm -rf Payload)
+            shasum -a 256 09_output/StarlightEmulator_Phase1_unsigned.ipa | tee 09_output/StarlightEmulator_Phase1_unsigned.ipa.sha256
+            echo "unsigned IPA 생성됨."
+          else
+            echo "StarlightEmulator.app 없음 → Host 빌드 로그(08_logs/host_build.log) 확인." | tee -a 08_logs/host_build.log
+          fi
+
+      # ---- 로그/산출물 회수 (성공/실패 무관) ----
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: 08_logs/**
+          if-no-files-found: warn
+
+      - name: Upload generated project + prebuilt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-intermediates
+          path: |
+            07_build/*.xcodeproj/**
+            07_build/prebuilt/**
+          if-no-files-found: warn
+
+      - name: Upload app + unsigned IPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-ipa
+          path: |
+            09_output/StarlightEmulator_Phase1_unsigned.ipa
+            09_output/StarlightEmulator_Phase1_unsigned.ipa.sha256
+            07_build/DerivedData/Build/Products/**/StarlightEmulator.app/**
+          if-no-files-found: warn

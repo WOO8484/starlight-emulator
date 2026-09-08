@@ -13,6 +13,17 @@ OUT="$HERE/prebuilt/melonx"
 LOG="$ROOT/08_logs"; mkdir -p "$OUT" "$LOG"
 
 COMMIT="55f84af15144e40d7fbe8984747855534d2a8ec1"   # AzureDominus/melonx@XC-ios-ht
+BRANCH="XC-ios-ht"
+
+# CI(01_sources 미포함) 대비: 소스가 없으면 기준 commit 으로 확보. 임의 최신화 금지.
+if [ ! -d "$SRC/.git" ]; then
+  echo "[MeloNX] 소스 클론(@$BRANCH)"
+  git clone --branch "$BRANCH" https://github.com/AzureDominus/melonx.git "$SRC"
+fi
+echo "[MeloNX] commit 고정: $COMMIT"
+git -C "$SRC" fetch --all --tags 2>/dev/null || true
+git -C "$SRC" checkout "$COMMIT" 2>&1 | tail -2 || { echo "error: 기준 commit checkout 실패(임의 최신화 금지)"; exit 1; }
+git -C "$SRC" submodule update --init --recursive 2>/dev/null || true
 
 # .NET 위치 탐색(원본 get_dotnet.sh 와 동일 개념). 필요 시 `dotnet workload install ios` 선행.
 DOTNET="$(command -v dotnet || true)"

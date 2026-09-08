@@ -1,0 +1,49 @@
+=== Starlight Phase1 실빌드 환경 확인 ===
+일시: Tue Sep  8 09:34:48     2026
+호스트 OS: MINGW64_NT-10.0-26200 3.6.9-b4195d69.x86_64 x86_64
+OSTYPE: cygwin
+
+--- 지시문 5항 필수 도구 실제 실행 ---
+
+### sw_vers
+[NOT FOUND] 'sw_vers' 명령이 이 환경에 없습니다.
+
+### xcodebuild -version
+[NOT FOUND] 'xcodebuild' 명령이 이 환경에 없습니다.
+
+### xcrun --sdk iphoneos --show-sdk-path
+[NOT FOUND] 'xcrun' 명령이 이 환경에 없습니다.
+
+### clang --version
+[NOT FOUND] 'clang' 명령이 이 환경에 없습니다.
+
+### cmake --version
+[NOT FOUND] 'cmake' 명령이 이 환경에 없습니다.
+
+### ninja --version
+[NOT FOUND] 'ninja' 명령이 이 환경에 없습니다.
+
+### dotnet --info
+
+Host:
+  Version:      8.0.29
+  Architecture: x64
+  Commit:       18fd75c847
+  RID:          win-x64
+
+.NET SDKs installed:
+
+### xcodegen --version
+[NOT FOUND] 'xcodegen' 명령이 이 환경에 없습니다.
+
+### codesign --help
+[NOT FOUND] 'codesign' 명령이 이 환경에 없습니다.
+
+### security help
+[NOT FOUND] 'security' 명령이 이 환경에 없습니다.
+
+### git --version
+git version 2.55.0.windows.3
+
+### python3 --version
+Python 

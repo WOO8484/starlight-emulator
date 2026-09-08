@@ -60,3 +60,16 @@ git -C 01_sources/ARMSX2 apply ../../04_patches/armsx2/0001-<설명>.patch
 MeloNX 는 patch 0 이므로 "upstream 교체 → 빌드 스크립트 재실행"만으로 갱신 성립.
 PPSSPP/ARMSX2 는 위 얕은 patch 1건만 재적용하면 된다. Adapter 가 upstream 내부에 깊게 침투하지 않도록
 (우리 코드는 03_adapters 에만) 유지한다.
+
+## Mac 없는 빌드/업데이트 (GitHub Actions) — CI_BUILD_GUIDE.md 참조
+로컬(Windows)에 Mac 이 없으므로 실제 iOS 컴파일은 GitHub Actions macOS 러너가 수행한다.
+```
+Windows 에서 코어/Adapter/patch 갱신 (기준 commit 교체 시 07_build 스크립트 + BUILD_NOTES 갱신)
+→ git push
+→ Actions ▸ "iOS Build" ▸ Run workflow
+→ 로그/unsigned IPA artifact 회수
+→ (실패 시) Windows 에서 수정 → push → 재실행
+→ iPhone 16 Pro Max 에서 SideStore/AltStore 재서명·설치 → 실기기 검증
+```
+빌드 스크립트가 각 엔진을 **기준 commit 으로 clone** 하므로 Actions 는 최신 HEAD 를 임의로 쓰지 않는다.
+수동 Xcode GUI 편집이 필요한 구조를 만들지 않는다(모든 설정은 project.yml/스크립트/04_patches).
