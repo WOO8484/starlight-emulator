@@ -94,6 +94,13 @@ jobs:
         continue-on-error: true
         run: bash 07_build/build_ppsspp_ios.sh
 
+      - name: Cache ARMSX2 iOS deps
+        if: ${{ !inputs.skip_armsx2 }}
+        uses: actions/cache@v4
+        with:
+          path: 07_build/prebuilt/armsx2/deps
+          key: armsx2-deps-${{ hashFiles('07_build/build_armsx2_deps_ios.sh') }}
+
       - name: Build ARMSX2 (iOS core libs)
         if: ${{ !inputs.skip_armsx2 }}
         continue-on-error: true

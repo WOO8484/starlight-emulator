@@ -14,6 +14,12 @@ SRCD="$ROOT/_cache/armsx2_deps_src"
 LOG="$ROOT/08_logs"; mkdir -p "$DEPS" "$SRCD" "$LOG"
 export CMAKE_PREFIX_PATH="$DEPS"
 
+# 캐시 히트: 핵심 라이브러리가 모두 있으면 재빌드 생략(Actions cache 로 복원됨)
+if [ -f "$DEPS/lib/libshaderc_combined.a" ] && [ -f "$DEPS/lib/libcurl.a" ] \
+   && [ -f "$DEPS/lib/libpng16.a" ] && [ -f "$DEPS/lib/libSDL3.a" ]; then
+  echo "[deps] 캐시된 prefix 재사용: $DEPS"; exit 0
+fi
+
 cmib() {  # cmib <name> <srcSubdir-or-.> <extra cmake args...>
   local name="$1" sub="$2"; shift 2
   local src="$SRCD/$name"; [ "$sub" != "." ] && src="$SRCD/$name/$sub"
@@ -72,7 +78,12 @@ cmib plutovg . -DPLUTOVG_BUILD_EXAMPLES=OFF
 clone plutosvg https://github.com/sammycage/plutosvg.git v0.0.7 recurse
 cmib plutosvg . -DPLUTOSVG_BUILD_EXAMPLES=OFF -DPLUTOSVG_ENABLE_FREETYPE=ON
 
-# 10) Shaderc (Vulkan 셰이더 컴파일러) + glslang/SPIRV-Tools/SPIRV-Headers (git-sync-deps)
+# 10) CURL (achievements/net; iOS 는 Apple SecureTransport 사용 → 추가 TLS 의존성 불필요)
+clone curl https://github.com/curl/curl.git curl-8_10_1
+cmib curl . -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DCURL_USE_OPENSSL=OFF \
+  -DCURL_USE_SECTRANSP=ON -DCURL_USE_LIBPSL=OFF -DCURL_DISABLE_LDAP=ON -DCURL_DISABLE_LDAPS=ON
+
+# 11) Shaderc (Vulkan 셰이더 컴파일러) + glslang/SPIRV-Tools/SPIRV-Headers (git-sync-deps)
 if [ ! -d "$SRCD/shaderc" ]; then
   git clone --depth=1 --branch v2024.4 https://github.com/google/shaderc.git "$SRCD/shaderc"
   ( cd "$SRCD/shaderc" && python3 ./utils/git-sync-deps ) 2>&1 | tee -a "$LOG/armsx2_deps.log"
