@@ -23,17 +23,37 @@
    남은 것은 **사용자가 저장소 push → Actions Run workflow → 로그/IPA artifact 회수** 후
    Windows 에서 오류 수정 루프를 돌리고, iPhone 16 Pro Max 에서 실기기 검증하는 것이다(CI_BUILD_GUIDE.md).
 
-## GitHub Actions (CI 빌드)
-- Runner: **NOT_TESTED** (워크플로 준비됨: 기본 `macos-26`, 입력으로 변경 가능)
-- macOS / Xcode / iOS SDK / Architecture: **NOT_TESTED** (첫 실행 시 08_logs/ci_environment.log 에 기록)
-- 워크플로: `.github/workflows/ios-build.yml` (workflow_dispatch, 엔진→Host→unsigned IPA, artifact 회수)
+## GitHub Actions (CI 빌드) — 실제 실행 결과 (2026-09-08)
+저장소: https://github.com/WOO8484/starlight-emulator (public) · 워크플로: `.github/workflows/ios-build.yml`
+- Runner: **PASS** macOS 15.7.9 (arm64), Xcode 16.4 (iPhoneOS 18.5 SDK), .NET 8 SDK
+- **MeloNX NativeAOT 빌드: PASS(CI)** — `Ryujinx.Headless.SDL2.dylib`(36.8MB, arm64), C ABI 심볼(main_ryujinx_sdl/set_native_window/pause/stop/touch) export 확인
+- **PPSSPP 빌드: PASS(CI)** — libPPSSPPCore/Core/Common/ppsspp_ui + 전 의존 .a + ffmpeg(iOS) + libMoltenVK
+- **Host 컴파일/링크: PASS(CI)** — unsigned IPA 생성
+- **PPSSPP + MeloNX 동시 실링크: PASS(CI)** — `** BUILD SUCCEEDED **`, **중복/undefined 심볼 0**
+  (CONFLICT_ANALYSIS 예측 검증: PPSSPP 정적 + MeloNX dylib two-level namespace 공존, 충돌 없음)
+- **unsigned IPA(PSP+Switch 2엔진): 생성 PASS(CI)** — `StarlightEmulator_Phase1_unsigned.ipa` (~16.8MB)
+- **ARMSX2 빌드: 진행 중** — PCSX2 top-level CMake 가 데스크톱 의존성 체인 요구(PNG 완료 →
+  JPEG/Zstd/LZ4/WebP/SDL3/Freetype/plutovg/plutosvg 각각 iOS 크로스빌드 필요). §24 격리 반복 중.
+- **실기기(설치/실행/렌더/오디오/입력/JIT/전환): NOT_TESTED** — dylib/프레임워크 임베드 + 서명 후
+  iPhone 16 Pro Max 에서 사용자 검증 필요.
 - 기준 commit 고정: PPSSPP 98e70c8 / ARMSX2 de57f43 / MeloNX 55f84af (임의 최신화 안 함)
+
+### CI 반복으로 실제 해결한 오류 (요약)
+1. 워크플로 미등록 → `runs-on: macos-15` 고정
+2. Host Swift 컴파일: Obj-C 델리게이트 메서드명(ppsspp/armsx2CoreDidChange) 임포트 규칙
+3. PPSSPP configure: `IOS_PLATFORM=OS64`→`OS`
+4. PPSSPP 빌드: Xcode 생성기 git-version.cpp 순서 → Ninja 전환
+5. PPSSPP 컴파일: `Core/CmdLine.h` 포함(CommandLineOptions)
+6. PPSSPP 링크: System_*/copyDeepLinkForPath → main.mm/AppDelegate.mm 포함 + main 리네임
+7. PPSSPP 링크: zlib(adler32)/ffmpeg → ffmpeg iOS 라이브러리 수집 + `-lz/-lbz2/VideoToolbox`
+8. ARMSX2 configure: libpng(iOS) 빌드 주입 (다음 의존성 진행 중)
 
 ---
 
 ## PPSSPP
 - Adapter: **PASS** (구현 완료: PPSSPPAdapter.swift + PPSSPPCore.h/.mm, NativeApp API 기반)
-- Build: **NOT_TESTED** (Windows 환경, xcodebuild 없음)
+- Build: **PASS (CI)** — iOS arm64 정적 라이브러리 전체
+- Link: **PASS (CI)** — Host 에 실링크(단독 및 MeloNX 공존), 심볼 충돌 0
 - Launch: **NOT_TESTED**
 - Stop/Return: **NOT_TESTED**
 - Relaunch: **NOT_TESTED**
@@ -55,7 +75,8 @@
 ## MeloNX
 - Adapter: **PASS** (구현 완료: MeloNXAdapter.swift + MeloNXCore.swift, SN_* C ABI/@_silgen_name 기반)
 - 소스 확보: **PASS** — AzureDominus/melonx@XC-ios-ht `55f84af15144e40d7fbe8984747855534d2a8ec1` → 01_sources/MeloNX
-- Build: **NOT_TESTED** (Ryujinx NativeAOT 라이브러리 + SDL2 링크 필요)
+- NativeAOT Build: **PASS (CI)** — Ryujinx.Headless.SDL2.dylib(36.8MB, arm64), C ABI 심볼 확인
+- Link: **PASS (CI)** — Host 에 실링크(단독 및 PPSSPP 공존)
 - Launch: **NOT_TESTED** (prod.keys + firmware 필요)
 - Stop/Return: **NOT_TESTED**
 - Relaunch: **NOT_TESTED**
