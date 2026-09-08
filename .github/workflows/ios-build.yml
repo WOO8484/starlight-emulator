@@ -4,10 +4,6 @@ name: iOS Build (Starlight Phase 1)
 on:
   workflow_dispatch:
     inputs:
-      runner:
-        description: "macOS runner label"
-        default: "macos-26"
-        type: string
       skip_ppsspp:
         description: "Skip PPSSPP build"
         default: false
@@ -34,7 +30,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ${{ inputs.runner || 'macos-26' }}
+    runs-on: macos-15
     env:
       # 기준 commit (BUILD_NOTES 기록과 동일). 임의 최신화 금지.
       PPSSPP_COMMIT: "98e70c8ca3435d532a059add0b4fb90a4a091248"
