@@ -1,38 +1,69 @@
-# 103 통합 에뮬 — Starlight Emulator (Phase 1)
+# Starlight Emulator (103 통합 에뮬) — Phase 1
 
-PSP(PPSSPP) · PS2(ARMSX2) · Switch(MeloNX) 세 엔진을 **단일 iOS 앱 내부의 독립 모듈**로
-실행·종료·재실행하는 구조를 만드는 프로젝트. **새 에뮬레이터를 만들지 않고** 검증된 원본
-엔진을 얇은 Adapter + EmulatorManager 로 연결한다(지시문 23항).
+PSP·PS2·Switch 세 에뮬레이터 엔진을 **하나의 iOS 앱 내부의 독립 모듈**로 실행·종료·재실행하는
+통합 프로젝트. **새 에뮬레이터를 만들지 않고**, 검증된 원본 엔진을 얇은 Adapter + EmulatorManager 로
+연결한다.
 
-## ⚠ 환경 상태
-이 저장소는 **Windows 에서 작성**되었다(Xcode/macOS/실기기 없음). 따라서 소스 통합 · Adapter/Host
-구현 · 빌드 설정 · 테스트 절차까지 준비되어 있고, **실제 빌드·실기기 검증은 macOS+Xcode+
-iPhone 16 Pro Max 에서** 수행해야 한다. 관련 항목은 모두 `NOT_TESTED`(→ `00_docs/PHASE1_RESULT.md`).
+```
+PSP    → PPSSPP
+PS2    → ARMSX2 (PCSX2 fork)
+Switch → MeloNX (Ryujinx fork)
+```
+
+## ⚠️ 포함되지 않는 것 (중요)
+이 저장소에는 **저작권/개인 자료가 포함되지 않습니다.**
+- ❌ PS2 BIOS · Switch prod.keys/title.keys · firmware
+- ❌ 게임 이미지(ISO/CSO/NSP/XCI 등) · 세이브 데이터
+- ❌ Apple 인증서/프로비저닝/토큰 등 비밀
+
+포함되는 것: **통합 Host · Adapter · patch · 빌드 스크립트 · CI 워크플로 · 문서**뿐.
+BIOS/keys/firmware/게임은 **사용자가 본인 실기기에서만** 합법적으로 확보·사용합니다.
+
+## 현재 상태 (정직 표기)
+- ✅ 통합 구조(Adapter/Manager/Host), 엔진별 링크 준비, 렌더 브리지, 빌드 스크립트, CI 파이프라인 **준비 완료**
+- ⏳ **iOS 실빌드 / IPA / 실기기 실행 = 미검증(NOT_TESTED)** — GitHub Actions 첫 실행으로 검증 예정
+- 상세: [`00_docs/PHASE1_RESULT.md`](00_docs/PHASE1_RESULT.md)
+
+미검증 기능을 완료된 것으로 표기하지 않습니다.
+
+## 빌드 방식 — Mac 없이 (GitHub Actions)
+로컬 개발은 Windows, 실제 iOS 컴파일은 **GitHub Actions macOS 러너**가 수행합니다.
+```
+Windows 에서 개발/수정 → git push → Actions "iOS Build" 실행
+→ 빌드 로그 + unsigned IPA artifact 회수 → iPhone 재서명(SideStore/AltStore)·설치
+```
+자세한 방법: [`00_docs/CI_BUILD_GUIDE.md`](00_docs/CI_BUILD_GUIDE.md)
+
+## 외부 upstream (기준 commit — 임의 최신화 안 함)
+| 엔진 | 저장소 | commit |
+|---|---|---|
+| PPSSPP | hrydgard/ppsspp | `98e70c8c` |
+| ARMSX2 | ARMSX2/ARMSX2 | `de57f431` |
+| MeloNX | AzureDominus/melonx @`XC-ios-ht` | `55f84af1` |
+
+원본은 저장소에 복제하지 않고 CI 가 위 commit 으로 clone 합니다. 우리 변경은 `04_patches/` 에만
+격리(PPSSPP CMake append 1건, ARMSX2 Main.cpp guard 1건, MeloNX 0건).
 
 ## 구조
 ```
-00_docs/      계획·인터페이스·빌드노트·업데이트가이드·결과 보고
-01_sources/   upstream 엔진 원본 (PPSSPP / ARMSX2 / MeloNX) — gitignore, submodule 권장
+00_docs/      계획·인터페이스·빌드노트·충돌분석·업데이트·CI 가이드·결과
+01_sources/   upstream (gitignore; CI/submodule 로 확보)
 02_host/      StarlightEmulator (최소 통합 테스트 Host, SwiftUI)
-03_adapters/  common(EmulatorModule/Manager/Types/Paths) + ppsspp/armsx2/melonx
-04_patches/   불가피한 upstream 변경만 (현재 0개)
-05_testdata/  PSP/PS2/Switch 테스트 게임 (gitignore)
-06_tests/     전환 체크리스트 + XCUITest 자동화
-07_build/     XcodeGen project.yml + build_ios.sh
-08_logs/      로그
-09_output/    IPA/워크스페이스 산출물
-_cache/       캐시/임시 (gitignore)
+03_adapters/  common + ppsspp/armsx2/melonx
+04_patches/   불가피한 최소 변경(빌드 경계 한정)
+06_tests/     코어 전환 체크리스트 + XCUITest
+07_build/     XcodeGen project.yml + 빌드 스크립트
+.github/workflows/  ios-build.yml (수동 실행)
 ```
 
-## 다음 단계 (Mac)
-1. `00_docs/UPDATE_GUIDE.md` 대로 `01_sources` 를 submodule 로 고정
-2. 각 엔진을 정적 라이브러리/프레임워크로 빌드 → `07_build/project.yml` 의 `*_LINKED` 활성
-3. `cd 07_build && xcodegen generate` → Xcode 로 열기
-4. iPhone 16 Pro Max 서명·JIT(AltStore/SideStore/JitStreamer/StikJIT 또는 TrollStore) 준비
-5. `06_tests/CORE_SWITCH_CHECKLIST.md` 로 실기기 검증 → `PHASE1_RESULT.md` 갱신
+## 지원 대상
+- iPhone 16 Pro Max (Phase 1 고정). 범용 기기/iPad 대응 없음.
 
-## 핵심 원칙 (지시문 22·23항)
-- 엔진 재구현 금지 · 거대 공통 코어 금지 · 최종 GUI 금지(2단계)
-- 가짜 렌더링/버튼-만-동작을 실제 실행 성공으로 기록 금지
-- 실패해도 외부 앱 호출로 몰래 대체 금지(기술적 근거 있을 때만 후보)
-- 작업 루트(`X:\103 통합에뮬`) 밖을 작업공간으로 사용 금지
+## 라이선스
+- 이 저장소 코드: **GPL-3.0-or-later** ([`LICENSE`](LICENSE))
+  (PCSX2 GPLv3·PPSSPP GPLv2+ 결합 결과물이 GPLv3 이므로)
+- 각 엔진/서드파티 라이선스: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
+
+## 핵심 원칙
+엔진 재구현 금지 · 거대 공통 코어 금지 · 최종 GUI(2단계) · 가짜 렌더/버튼-성공 기록 금지 ·
+실제 오류 근거 전 구조 선변경 금지 · 작업 루트 밖 사용 금지.

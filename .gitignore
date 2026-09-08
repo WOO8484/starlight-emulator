@@ -1,35 +1,73 @@
-# === 캐시/임시/빌드 산출물 (지시문 0항: _cache 하위로 재지정) ===
-_cache/
-07_build/DerivedData/
-07_build/*.xcodeproj/
-07_build/*.xcworkspace/
-09_output/*.ipa
-09_output/Payload/
-08_logs/*.log
+# ============================================================================
+# Starlight Emulator — .gitignore (공개 저장소용)
+# 원칙: 소스/Adapter/patch/빌드설정/CI/문서만 공개. 개인·저작권·비밀 자료는 제외.
+# ============================================================================
 
-# === upstream 엔진 원본 (대용량) ===
-# 우리 저장소에는 커밋하지 않는다. submodule 또는 UPDATE_GUIDE 절차로 확보.
-# (분석용 shallow 클론이 로컬 디스크에는 존재)
+# ---- 게임/펌웨어/키 (저작권·개인자료: 절대 금지) ----
+*.iso
+*.cso
+*.chd
+*.nsp
+*.xci
+*.pbp
+*.rom
+prod.keys
+title.keys
+*.keys
+firmware/
+bios/
+BIOS/
+05_testdata/**
+!05_testdata/**/.gitkeep
+
+# ---- Apple 서명/프로비저닝 (비밀) ----
+*.p12
+*.mobileprovision
+*.cer
+*.pem
+*.key
+*.certSigningRequest
+
+# ---- 시크릿/토큰/환경 ----
+.env
+.env.*
+secrets.*
+*.secret
+*token*
+*.pat
+
+# ---- 사용자 데이터/세이브 ----
+saves/
+save/
+userdata/
+UserData/
+savestates/
+memcards/
+
+# ---- upstream 엔진 원본 (대용량: submodule/CI clone 로 관리) ----
 01_sources/PPSSPP/
 01_sources/ARMSX2/
 01_sources/MeloNX/
 
-# === 테스트 데이터 (게임/BIOS/keys 등 대용량·저작권) ===
-05_testdata/**/*.iso
-05_testdata/**/*.cso
-05_testdata/**/*.chd
-05_testdata/**/*.nsp
-05_testdata/**/*.xci
-05_testdata/**/*.bin
-05_testdata/**/prod.keys
-05_testdata/**/*.keys
+# ---- 빌드 산출물/중간물 ----
+_cache/
+07_build/DerivedData/
+07_build/prebuilt/
+07_build/*.xcodeproj/
+07_build/*.xcworkspace/
+DerivedData/
+build/
+*.ipa
+*.xcarchive
+*.app/
+09_output/Payload/
+08_logs/*.log
 
-# === macOS/Xcode ===
+# ---- macOS / Xcode ----
 .DS_Store
 xcuserdata/
 *.xcuserstate
-build/
 
-# === 기타 ===
+# ---- 기타 ----
 *.tmp
 Thumbs.db
