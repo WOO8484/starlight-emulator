@@ -20,6 +20,14 @@ on:
         description: "Generate + build Host after engines"
         default: true
         type: boolean
+      link_ppsspp:
+        description: "Link PPSSPP into Host (needs PPSSPP prebuilt)"
+        default: false
+        type: boolean
+      link_armsx2:
+        description: "Link ARMSX2 into Host (needs ARMSX2 prebuilt)"
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -116,6 +124,9 @@ jobs:
       - name: Generate Host project
         if: ${{ inputs.build_host }}
         continue-on-error: true
+        env:
+          LINK_PPSSPP: ${{ inputs.link_ppsspp && '1' || '0' }}
+          LINK_ARMSX2: ${{ inputs.link_armsx2 && '1' || '0' }}
         run: bash 07_build/generate_host.sh
 
       - name: Build Host (unsigned)
