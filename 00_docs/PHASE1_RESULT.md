@@ -39,9 +39,16 @@
   경로: iOS 의존성 9종 크로스빌드(PNG/JPEG/Zstd/LZ4/WebP/SDL3/Freetype/pluto*/Shaderc/CURL) →
   ENABLE_QT_UI=OFF + ENABLE_LIBRETRO=ON(Apple 유효 경로; SDL 프론트엔드는 NOT_APPLE 게이트) →
   _LIBCPP_DISABLE_AVAILABILITY(std::filesystem). PCSX2 는 OBJECT 라이브러리라 objects 를 ar 아카이브.
-- **ARMSX2 Host 링크: 진행 중** — PPSSPP 와 다수 라이브러리(imgui/png/glslang/SPIRV/zlib) 중복 →
-  정적 공존 시 duplicate symbol(CONFLICT_ANALYSIS §1 예측 실증). 해결: ARMSX2 를 자기완결형 dylib 로
-  격리(two-level namespace). + GS 렌더(Host::AcquireRenderWindow→CAMetalLayer)/오디오/입력 런타임 통합.
+- **ARMSX2 Host 링크/런타임: 봉인/보류(사용자 결정)** — 빌드 성공 상태·로그·문서 보존. 이 포크엔
+  Apple 프론트엔드가 없어 실행에는 libretro HW-렌더 프론트엔드(iOS/Metal-Vulkan) 신규 구현 필요 →
+  보류. 정적 공존 시 PPSSPP 와 중복 심볼(CONFLICT_ANALYSIS §1) → 재개 시 dylib 격리 권장.
+  상태·재개 절차: **ARMSX2_STATUS.md**.
+
+## Phase-1 확정 (2엔진)
+- **확정 대상 = PPSSPP(PSP) + MeloNX(Switch)**. 기본값 Run(플래그 없음) → 2엔진 device-ready IPA 자동 생성.
+- CI PASS: 빌드 / 단일 앱 동시 링크(심볼 충돌 0) / 런타임 임베드 / unsigned IPA(~101MB).
+- 남은 것 = **실기기 검증(NOT_TESTED)**: 설치/실행/렌더/오디오/입력/JIT/코어 전환 → DEVICE_TEST_GUIDE.md.
+- ARMSX2(PS2) = 봉인(빌드 성공 보존, 런타임 통합 후속).
 - **실기기(설치/실행/렌더/오디오/입력/JIT/전환): NOT_TESTED** — dylib/프레임워크 임베드 + 서명 후
   iPhone 16 Pro Max 에서 사용자 검증 필요.
 - 기준 commit 고정: PPSSPP 98e70c8 / ARMSX2 de57f43 / MeloNX 55f84af (임의 최신화 안 함)
