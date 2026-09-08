@@ -34,8 +34,14 @@
 - **unsigned IPA(PSP+Switch 2엔진, 런타임 임베드): 생성 PASS(CI)** — `StarlightEmulator_Phase1_unsigned.ipa` (~100MB)
   임베드: Ryujinx dylib + SDL2.framework + FFmpeg(libav*) + libMoltenVK + RyujinxHelper/BreakpointJIT + PPSSPP assets.
   otool 검증: MeloNX dylib 은 시스템 libs 만 링크(SDL2/FFmpeg 는 런타임 dlopen → 임베드로 커버). 실기기 절차: DEVICE_TEST_GUIDE.md
-- **ARMSX2 빌드: 진행 중** — PCSX2 top-level CMake 가 데스크톱 의존성 체인 요구(PNG 완료 →
-  JPEG/Zstd/LZ4/WebP/SDL3/Freetype/plutovg/plutosvg 각각 iOS 크로스빌드 필요). §24 격리 반복 중.
+- **ARMSX2 빌드: PASS(CI)** — PCSX2 코어 [334/334] iOS 컴파일 성공 + 정적 라이브러리 19종 생성
+  (libPCSX2/common/imgui/libchdr/lzma/soundtouch/cubeb/vixl/rcheevos/zip/fmt/cpuinfo 등).
+  경로: iOS 의존성 9종 크로스빌드(PNG/JPEG/Zstd/LZ4/WebP/SDL3/Freetype/pluto*/Shaderc/CURL) →
+  ENABLE_QT_UI=OFF + ENABLE_LIBRETRO=ON(Apple 유효 경로; SDL 프론트엔드는 NOT_APPLE 게이트) →
+  _LIBCPP_DISABLE_AVAILABILITY(std::filesystem). PCSX2 는 OBJECT 라이브러리라 objects 를 ar 아카이브.
+- **ARMSX2 Host 링크: 진행 중** — PPSSPP 와 다수 라이브러리(imgui/png/glslang/SPIRV/zlib) 중복 →
+  정적 공존 시 duplicate symbol(CONFLICT_ANALYSIS §1 예측 실증). 해결: ARMSX2 를 자기완결형 dylib 로
+  격리(two-level namespace). + GS 렌더(Host::AcquireRenderWindow→CAMetalLayer)/오디오/입력 런타임 통합.
 - **실기기(설치/실행/렌더/오디오/입력/JIT/전환): NOT_TESTED** — dylib/프레임워크 임베드 + 서명 후
   iPhone 16 Pro Max 에서 사용자 검증 필요.
 - 기준 commit 고정: PPSSPP 98e70c8 / ARMSX2 de57f43 / MeloNX 55f84af (임의 최신화 안 함)
