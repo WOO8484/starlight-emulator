@@ -9,8 +9,8 @@ on:
         default: false
         type: boolean
       skip_armsx2:
-        description: "Skip ARMSX2 build"
-        default: false
+        description: "Skip ARMSX2 build (기본 skip — ARMSX2 는 현재 봉인/보류)"
+        default: true
         type: boolean
       skip_melonx:
         description: "Skip MeloNX build"
@@ -21,11 +21,11 @@ on:
         default: true
         type: boolean
       link_ppsspp:
-        description: "Link PPSSPP into Host (needs PPSSPP prebuilt)"
-        default: false
+        description: "Link PPSSPP into Host (기본 ON — 2엔진 통합본)"
+        default: true
         type: boolean
       link_armsx2:
-        description: "Link ARMSX2 into Host (needs ARMSX2 prebuilt)"
+        description: "Link ARMSX2 into Host (봉인/보류 — 기본 OFF)"
         default: false
         type: boolean
 

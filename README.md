@@ -19,10 +19,14 @@ Switch → MeloNX (Ryujinx fork)
 포함되는 것: **통합 Host · Adapter · patch · 빌드 스크립트 · CI 워크플로 · 문서**뿐.
 BIOS/keys/firmware/게임은 **사용자가 본인 실기기에서만** 합법적으로 확보·사용합니다.
 
-## 현재 상태 (정직 표기)
-- ✅ 통합 구조(Adapter/Manager/Host), 엔진별 링크 준비, 렌더 브리지, 빌드 스크립트, CI 파이프라인 **준비 완료**
-- ⏳ **iOS 실빌드 / IPA / 실기기 실행 = 미검증(NOT_TESTED)** — GitHub Actions 첫 실행으로 검증 예정
-- 상세: [`00_docs/PHASE1_RESULT.md`](00_docs/PHASE1_RESULT.md)
+## 현재 상태 (정직 표기, CI 실증)
+Phase-1 확정 대상 = **PPSSPP(PSP) + MeloNX(Switch) 2엔진**.
+- ✅ **2엔진 iOS 빌드 + 단일 앱 동시 링크 + 런타임 임베드 + unsigned IPA(~101MB)** = **PASS(GitHub Actions)**
+  (중복/undefined 심볼 0, MeloNX dylib+SDL2/FFmpeg/MoltenVK 임베드)
+- ⏳ **실기기 설치/실행/렌더/오디오/입력/JIT = NOT_TESTED** — iPhone 16 Pro Max 검증 필요([`00_docs/DEVICE_TEST_GUIDE.md`](00_docs/DEVICE_TEST_GUIDE.md))
+- 🔒 **ARMSX2(PS2) = 봉인/보류** — iOS 빌드는 성공(PCSX2 334/334 + 19 라이브러리)했으나, 이 포크엔 Apple
+  프론트엔드가 없어 실행에는 libretro HW-렌더 프론트엔드 신규 구현이 필요 → 보류. 상태·재개법: [`00_docs/ARMSX2_STATUS.md`](00_docs/ARMSX2_STATUS.md)
+- 상세 결과: [`00_docs/PHASE1_RESULT.md`](00_docs/PHASE1_RESULT.md)
 
 미검증 기능을 완료된 것으로 표기하지 않습니다.
 
