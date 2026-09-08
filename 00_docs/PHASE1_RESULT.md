@@ -31,7 +31,9 @@
 - **Host 컴파일/링크: PASS(CI)** — unsigned IPA 생성
 - **PPSSPP + MeloNX 동시 실링크: PASS(CI)** — `** BUILD SUCCEEDED **`, **중복/undefined 심볼 0**
   (CONFLICT_ANALYSIS 예측 검증: PPSSPP 정적 + MeloNX dylib two-level namespace 공존, 충돌 없음)
-- **unsigned IPA(PSP+Switch 2엔진): 생성 PASS(CI)** — `StarlightEmulator_Phase1_unsigned.ipa` (~16.8MB)
+- **unsigned IPA(PSP+Switch 2엔진, 런타임 임베드): 생성 PASS(CI)** — `StarlightEmulator_Phase1_unsigned.ipa` (~100MB)
+  임베드: Ryujinx dylib + SDL2.framework + FFmpeg(libav*) + libMoltenVK + RyujinxHelper/BreakpointJIT + PPSSPP assets.
+  otool 검증: MeloNX dylib 은 시스템 libs 만 링크(SDL2/FFmpeg 는 런타임 dlopen → 임베드로 커버). 실기기 절차: DEVICE_TEST_GUIDE.md
 - **ARMSX2 빌드: 진행 중** — PCSX2 top-level CMake 가 데스크톱 의존성 체인 요구(PNG 완료 →
   JPEG/Zstd/LZ4/WebP/SDL3/Freetype/plutovg/plutosvg 각각 iOS 크로스빌드 필요). §24 격리 반복 중.
 - **실기기(설치/실행/렌더/오디오/입력/JIT/전환): NOT_TESTED** — dylib/프레임워크 임베드 + 서명 후

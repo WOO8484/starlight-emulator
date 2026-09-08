@@ -16,9 +16,11 @@ import Foundation
 
 public enum StarlightPaths {
 
-    /// 앱 전용 Application Support 루트.
+    /// 엔진 데이터 루트. Phase-1 실기기 테스트를 위해 **Documents** 하위에 둔다.
+    /// (Info.plist 의 UIFileSharingEnabled + LSSupportsOpeningDocumentsInPlace 로 Files 앱에서
+    ///  keys/firmware/게임을 직접 넣을 수 있어야 하므로. Application Support 는 파일 공유 불가.)
     public static func applicationSupportRoot() throws -> URL {
-        let base = try FileManager.default.url(for: .applicationSupportDirectory,
+        let base = try FileManager.default.url(for: .documentDirectory,
                                                in: .userDomainMask,
                                                appropriateFor: nil, create: true)
         let root = base.appendingPathComponent("StarlightEmulator", isDirectory: true)
