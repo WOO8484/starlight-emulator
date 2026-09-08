@@ -57,12 +57,26 @@ cmake -S "$SRC" -B "$BUILD" -G Ninja \
   -DENABLE_QT_UI=OFF \
   -DUSE_VULKAN=ON 2>&1 | tee "$LOG/armsx2_cmake.log"
 
-echo "[ARMSX2] 코어 라이브러리 빌드 (PCSX2 + common)"
-# Main.cpp 는 Host 타깃에서 -DARMSX2_EMBED 로 컴파일(정의는 patch 참고).
-cmake --build "$BUILD" --target PCSX2 -j 2>&1 | tee "$LOG/armsx2_build.log"
-cmake --build "$BUILD" --target common -j 2>&1 | tee -a "$LOG/armsx2_build.log"
+echo "[ARMSX2] 코어 + 3rdparty 전체 빌드 (프론트엔드 타깃으로 의존성 일괄 빌드)"
+# PCSX2 는 DISABLE_ADVANCE_SIMD=ON 이라 OBJECT 라이브러리(.a 없음). 프론트엔드(pcsx2-sdl) 타깃을
+# 빌드하면 PCSX2 오브젝트 + 모든 3rdparty(.a) + common 이 만들어진다. exe 최종 링크는 실패해도
+# (iOS 프레임워크 미지정) 라이브러리는 이미 생성되므로 무시하고 수집한다.
+cmake --build "$BUILD" --target common -j 2>&1 | tee "$LOG/armsx2_build.log" || true
+cmake --build "$BUILD" --target pcsx2-sdl -j 2>&1 | tee -a "$LOG/armsx2_build.log" \
+  || echo "(pcsx2-sdl exe 최종 링크 무시 — 정적 라이브러리는 생성됨)"
+
+echo "[ARMSX2] PCSX2 OBJECT → libPCSX2.a 아카이브"
+OBJDIR="$BUILD/pcsx2/CMakeFiles/PCSX2.dir"
+if [ -d "$OBJDIR" ]; then
+  find "$OBJDIR" -name '*.o' > /tmp/pcsx2_objs.txt
+  if [ -s /tmp/pcsx2_objs.txt ]; then
+    rm -f "$OUT/libPCSX2.a"
+    xargs ar rcs "$OUT/libPCSX2.a" < /tmp/pcsx2_objs.txt
+    echo "  libPCSX2.a 생성: $(wc -l < /tmp/pcsx2_objs.txt) objects, $(du -h "$OUT/libPCSX2.a" | cut -f1)"
+  fi
+fi
 
 echo "[ARMSX2] 산출물 수집 → $OUT"
-find "$BUILD" -name '*.a' -exec cp -v {} "$OUT/" \;
+find "$BUILD" -name '*.a' -exec cp -v {} "$OUT/" \; 2>/dev/null | tail -30
 # BIOS 는 저작권 자산이므로 포함하지 않음(사용자가 실기기 dataRoot/bios 에 배치).
-echo "[ARMSX2] 완료. 링크: $OUT/*.a. BIOS 는 런타임 dataRoot/bios 에 배치(지시문 8·13항)."
+echo "[ARMSX2] 완료. 링크: $OUT/*.a (+ deps/prefix). BIOS 는 런타임 dataRoot/bios 에 배치(지시문 8·13항)."
